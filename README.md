@@ -81,6 +81,8 @@ package.json     # Dependências e comandos
 
 A [API oficial do RetroAchievements](https://api-docs.retroachievements.org/) disponibiliza informações de usuários, jogos, conquistas, rankings, sistemas e eventos. Para qualquer endpoint autenticado, são usados o nome/ULID do usuário e uma Web API Key. A documentação alerta que essa chave deve ser tratada como uma senha e nunca enviada ao repositório. [Guia de início da API](https://api-docs.retroachievements.org/getting-started.html)
 
+Consulte também o [guia em tabela de todos os recursos da API](docs/retroachievements-api.md) para entender onde cada endpoint se encaixa no app.
+
 ### Dados planejados por tela
 
 | Necessidade | Recurso da API | Observação |
