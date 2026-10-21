@@ -4,6 +4,7 @@
     "slug": "checkpoint-retro-achievements",
     "scheme": "checkpoint",
     "version": "0.1.0",
+    "icon": "./assets/checkpoint-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "platforms": [
@@ -13,7 +14,14 @@
     ],
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/checkpoint-icon.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/checkpoint-icon.png",
+        "backgroundColor": "#071033"
+      }
     },
     "plugins": [
       "expo-asset",

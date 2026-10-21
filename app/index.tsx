@@ -9,7 +9,14 @@ import { ActivityFeed } from '../components/ActivityFeed';
 import { CommunityFeed } from '../components/CommunityFeed';
 import { GameDetail } from '../components/GameDetail';
 import { HomeDashboard } from '../components/HomeDashboard';
-import { UserGameProgress } from '../src/retroachievements';
+import { ConsoleExplorer } from '../components/ConsoleExplorer';
+import { ConsoleGames } from '../components/ConsoleGames';
+import { ProfileScreen } from '../components/ProfileScreen';
+import { getUserProfile, RetroConsole, UserGameProgress } from '../src/retroachievements';
+
+// Feather não possui um glifo chamado "gamepad". Mantemos um fallback válido
+// para os cartões que ainda usam esse nome de ícone em todo o app.
+(Feather.glyphMap as Record<string, number>).gamepad = Feather.glyphMap.monitor;
 
 const featured = { title: "Oddworld: Abe's Oddysee", system: 'PlayStation', progress: 62, image: 'https://media.retroachievements.org/Images/025250.png' };
 const games = [
@@ -22,6 +29,7 @@ const weeklyGoals = [
   { label: 'Desbloquear conquistas', current: 7, total: 10, color: '#ffe36d' },
   { label: 'Jogar em hardcore', current: 3, total: 5, color: '#a993ff' },
 ];
+const headerProfileStyles = StyleSheet.create({ wrapper: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 190 }, name: { color: '#d7dceb', fontSize: 11, fontWeight: '800', maxWidth: 130 }, avatar: { overflow: 'hidden', borderRadius: 20 }, image: { ...StyleSheet.absoluteFillObject, width: undefined, height: undefined, borderRadius: 20 } });
 
 function SectionTitle({ title, action }: { title: string; action?: string }) {
   return <View style={styles.sectionHead}><Text style={styles.sectionTitle}>{title}</Text>{action && <Text style={styles.action}>{action}</Text>}</View>;
@@ -35,7 +43,9 @@ export default function Home() {
   const [apiKey, setApiKey] = useState('');
   const [saved, setSaved] = useState(false);
   const [credentialsError, setCredentialsError] = useState(false);
+  const [headerProfile, setHeaderProfile] = useState({ username: '', avatar: '' });
   const [selectedGame, setSelectedGame] = useState<UserGameProgress | null>(null);
+  const [selectedConsole, setSelectedConsole] = useState<RetroConsole | null>(null);
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 900;
   const language = getAppLanguage();
@@ -43,13 +53,27 @@ export default function Home() {
   const tabs = [t.home, t.explore, t.activity, t.profile];
   const icons: Record<string, keyof typeof Ionicons.glyphMap> = { [t.home]: 'home', [t.explore]: 'compass', [t.activity]: 'pulse', [t.profile]: 'person' };
   const deviceDate = new Intl.DateTimeFormat(language, { weekday: 'long', day: '2-digit', month: 'short' }).format(new Date()).toUpperCase();
+  (styles as any).headerProfile = headerProfileStyles.wrapper;
+  (styles as any).headerProfileName = headerProfileStyles.name;
+  (styles as any).avatar = [styles.avatar, headerProfileStyles.avatar];
+  (styles as any).avatarImage = headerProfileStyles.image;
 
   useEffect(() => {
     loadCredentials().then((credentials) => {
       setUsername(credentials.username);
       setApiKey(credentials.apiKey);
+      if (!credentials.username || !credentials.apiKey) setSettingsOpen(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (!apiKey || !username) { setHeaderProfile({ username: '', avatar: '' }); return; }
+    let active = true;
+    getUserProfile(apiKey, username).then((profile) => {
+      if (active) setHeaderProfile({ username: profile.username, avatar: profile.avatar });
+    }).catch(() => active && setHeaderProfile({ username, avatar: '' }));
+    return () => { active = false; };
+  }, [apiKey, username]);
 
   async function handleSaveCredentials() {
     if (!username.trim() || !apiKey.trim()) {
@@ -70,8 +94,8 @@ export default function Home() {
 
   return <SafeAreaView style={styles.safe}><View style={[styles.page, isDesktop && styles.desktopPage]}>
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, isDesktop && styles.desktopContent]}>
-      <View style={[styles.topbar, isDesktop && styles.desktopTopbar]}><View>{!isDesktop && <Text style={styles.brand}>CHECKPOINT</Text>}<Text style={[styles.tagline, isDesktop && styles.desktopPageTitle]}>{isDesktop ? t.overview : t.subtitle}</Text></View>{isDesktop && <Text style={styles.desktopDate}>{deviceDate}</Text>}<View style={styles.headerActions}><Pressable onPress={() => setSettingsOpen(true)} style={styles.settingsButton}><Feather name="settings" size={18} color="#c5cada" /></Pressable><Pressable style={styles.avatar}><Text style={styles.avatarText}>N</Text></Pressable></View></View>
-      {selectedGame ? <GameDetail game={selectedGame} apiKey={apiKey} username={username} onBack={() => setSelectedGame(null)} /> : activeTab === 2 ? <ActivityFeed apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} /> : activeTab === 0 ? <HomeDashboard apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} /> : <>
+      <View style={[styles.topbar, isDesktop && styles.desktopTopbar]}><View>{!isDesktop && <Text style={styles.brand}>CHECKPOINT</Text>}<Text style={[styles.tagline, isDesktop && styles.desktopPageTitle]}>{isDesktop ? t.overview : t.subtitle}</Text></View>{isDesktop && <Text style={styles.desktopDate}>{deviceDate}</Text>}<View style={styles.headerActions}><Pressable onPress={() => setSettingsOpen(true)} style={styles.settingsButton}><Feather name="settings" size={18} color="#c5cada" /></Pressable><Pressable onPress={() => { setActiveTab(3); setSelectedConsole(null); setSelectedGame(null); }} style={styles.headerProfile}>{isDesktop && !!headerProfile.username && <Text numberOfLines={1} style={styles.headerProfileName}>{headerProfile.username}</Text>}<View style={styles.avatar}>{headerProfile.avatar ? <Image source={{ uri: headerProfile.avatar.startsWith('http') ? headerProfile.avatar : `https://media.retroachievements.org${headerProfile.avatar}` }} style={styles.avatarImage} /> : <Text style={styles.avatarText}>{(headerProfile.username || username || 'N').slice(0, 1).toUpperCase()}</Text>}</View></Pressable></View></View>
+      {selectedGame ? <GameDetail game={selectedGame} apiKey={apiKey} username={username} onBack={() => setSelectedGame(null)} /> : selectedConsole ? <ConsoleGames apiKey={apiKey} username={username} console={selectedConsole} onBack={() => setSelectedConsole(null)} onOpenGame={setSelectedGame} /> : activeTab === 2 ? <ActivityFeed apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} /> : activeTab === 1 ? <ConsoleExplorer apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenConsole={setSelectedConsole} onOpenGame={setSelectedGame} /> : activeTab === 0 ? <HomeDashboard apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} /> : activeTab === 3 ? <ProfileScreen apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} onApiAvailabilityChange={(available) => setSettingsOpen(!available)} /> : <>
       <View style={styles.search}><Feather name="search" size={19} color="#8a91a9" /><TextInput value={search} onChangeText={setSearch} placeholder={t.search} placeholderTextColor="#777f96" style={styles.input} /></View>
       <View style={styles.greeting}><Text style={styles.eyebrow}>{t.greeting}</Text><Text style={styles.headline}>{t.headline}</Text></View>
       <View style={styles.overview}>
@@ -89,7 +113,7 @@ export default function Home() {
       <CommunityFeed apiKey={apiKey} onOpenSettings={() => setSettingsOpen(true)} />
       </>}
     </ScrollView>
-    <View style={[styles.nav, isDesktop && styles.desktopNav]}>{isDesktop && <><View style={styles.desktopBrand}><Text style={styles.brand}>CHECKPOINT</Text><Text style={styles.tagline}>{t.desktopSubtitle}</Text></View><Text style={styles.desktopNavCaption}>{t.navigation}</Text></>}{tabs.map((tab, index) => { const active = activeTab === index; const icon = icons[tab]; return <Pressable key={tab} onPress={() => setActiveTab(index)} style={[styles.navItem, isDesktop && styles.desktopNavItem, active && isDesktop && styles.desktopNavItemActive]}><Ionicons name={active ? icon : `${icon}-outline` as keyof typeof Ionicons.glyphMap} size={21} color={active ? '#ffe36d' : '#747c91'} /><Text style={[styles.navText, isDesktop && styles.desktopNavText, active && styles.navTextActive]}>{tab}</Text></Pressable>; })}{isDesktop && <Pressable onPress={() => setSettingsOpen(true)} style={styles.desktopNavFooter}><Feather name="settings" size={17} color="#858ca1" /><Text style={styles.desktopSettings}>{t.settings}</Text></Pressable>}</View>
+    <View style={[styles.nav, isDesktop && styles.desktopNav]}>{isDesktop && <><View style={styles.desktopBrand}><Text style={styles.brand}>CHECKPOINT</Text><Text style={styles.tagline}>{t.desktopSubtitle}</Text></View><Text style={styles.desktopNavCaption}>{t.navigation}</Text></>}{tabs.map((tab, index) => { const active = activeTab === index; const icon = icons[tab]; return <Pressable key={tab} onPress={() => { setActiveTab(index); setSelectedConsole(null); setSelectedGame(null); }} style={[styles.navItem, isDesktop && styles.desktopNavItem, active && isDesktop && styles.desktopNavItemActive]}><Ionicons name={active ? icon : `${icon}-outline` as keyof typeof Ionicons.glyphMap} size={21} color={active ? '#ffe36d' : '#747c91'} /><Text style={[styles.navText, isDesktop && styles.desktopNavText, active && styles.navTextActive]}>{tab}</Text></Pressable>; })}{isDesktop && <Pressable onPress={() => setSettingsOpen(true)} style={styles.desktopNavFooter}><Feather name="settings" size={17} color="#858ca1" /><Text style={styles.desktopSettings}>{t.settings}</Text></Pressable>}</View>
     <Modal transparent visible={settingsOpen} animationType="fade" onRequestClose={() => setSettingsOpen(false)}><View style={styles.modalOverlay}><View style={styles.modalCard}><View style={styles.modalHeader}><View><Text style={styles.modalTitle}>{t.settingsTitle}</Text><Text style={styles.modalDescription}>{t.settingsDescription}</Text></View><Pressable onPress={() => setSettingsOpen(false)} style={styles.closeButton}><Feather name="x" size={20} color="#d6d9e5" /></Pressable></View><Text style={styles.fieldLabel}>{t.username}</Text><TextInput autoCapitalize="none" autoCorrect={false} value={username} onChangeText={(value) => { setUsername(value); setCredentialsError(false); }} placeholder="RetroAchievements username" placeholderTextColor="#747c91" style={styles.modalInput} /><Text style={styles.fieldLabel}>{t.apiKey}</Text><TextInput autoCapitalize="none" autoCorrect={false} secureTextEntry value={apiKey} onChangeText={(value) => { setApiKey(value); setCredentialsError(false); }} placeholder="••••••••••••••••" placeholderTextColor="#747c91" style={styles.modalInput} /><Text style={styles.keyHint}>{t.apiKeyHint}</Text><Text style={styles.storageNotice}>{t.storageNotice}</Text>{credentialsError && <Text style={styles.credentialsError}>{t.credentialsRequired}</Text>}{saved && <Text style={styles.savedMessage}>{t.saved}</Text>}<Pressable onPress={handleSaveCredentials} style={styles.saveButton}><Text style={styles.saveButtonText}>{t.save}</Text></Pressable><View style={styles.modalFooter}><Pressable onPress={handleClearCredentials}><Text style={styles.removeText}>{t.remove}</Text></Pressable><Pressable onPress={() => setSettingsOpen(false)}><Text style={styles.cancelText}>{t.cancel}</Text></Pressable></View></View></View></Modal>
   </View></SafeAreaView>;
 }

@@ -10,10 +10,12 @@
     "web": "node ./node_modules/expo/bin/cli start --web"
   },
   "dependencies": {
+    "@babel/runtime": "7.26.0",
     "@expo/vector-icons": "^15.0.2",
     "expo": "~57.0.30",
     "expo-asset": "~57.0.20",
     "expo-linear-gradient": "~57.0.2",
+    "expo-linking": "~57.0.13",
     "expo-localization": "~57.0.2",
     "expo-modules-core": "~57.0.23",
     "expo-router": "~57.0.28",

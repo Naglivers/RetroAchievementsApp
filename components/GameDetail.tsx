@@ -99,7 +99,7 @@ export function GameDetail({ game, apiKey, username, onBack }: Props) {
         <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Comentários</Text><Text style={styles.sectionCount}>{comments.length}</Text></View>
         {comments.length === 0 ? <Text style={styles.empty}>Ainda não há comentários recentes.</Text> : comments.map((comment, index) => <View key={`${comment.user}-${index}`} style={styles.comment}><View style={styles.commentAvatar}><Text style={styles.commentInitial}>{comment.user.slice(0, 1).toUpperCase()}</Text></View><View style={styles.commentCopy}><Text style={styles.commentUser}>{comment.user}</Text><Text style={styles.commentText}>{comment.text}</Text><Text style={styles.commentDate}>{dateText(comment.submitted)}</Text></View></View>)}
       </View>
-      {desktop && <View style={rail.sidebar}>
+      {desktop && <View style={[rail.sidebar, { width: 236, minWidth: 236, overflow: 'hidden' }]}>
         <Image source={{ uri: details.imageBoxArt ? media(details.imageBoxArt) : media(game.imageIcon) }} style={rail.art} />
         <View style={rail.warning}><Text style={rail.warningText}>◉  Alerta de Epilepsia Fotossensível</Text></View>
         <View style={rail.facts}>{[['Desenvolvedor', details.developer], ['Jogo base', game.title], ['Gênero', details.genre], ['Lançamento', details.released], ['Plataforma', details.consoleName], ['Progresso', details.userCompletion], ['Tempo de jogo', playtime], ['Jogadores', details.numDistinctPlayers.toLocaleString()]].map(([label, value], index) => <View key={label} style={[rail.fact, index === 7 && rail.factLast]}><Text style={rail.factLabel}>{label}</Text><Text style={rail.factValue}>{value || 'Não informado'}</Text></View>)}</View>
@@ -108,7 +108,7 @@ export function GameDetail({ game, apiKey, username, onBack }: Props) {
         <Pressable onPress={() => open(`https://retroachievements.org/game/${game.gameId}`)} style={rail.resource}><Feather name="message-square" size={14} color="#e1c500" /><Text style={rail.resourceText}>Tópico de Fórum do Set Base</Text></Pressable>
         <Text style={rail.resourcesTitle}>Extras</Text>
         <Pressable onPress={() => open(`https://retroachievements.org/game/${game.gameId}`)} style={rail.resource}><Feather name="search" size={14} color="#e1c500" /><Text style={rail.resourceText}>Encontrar Jogos Relacionados</Text></Pressable>
-        <GameSidebar apiKey={apiKey} gameId={details.id} />
+        <GameSidebar apiKey={apiKey} gameId={details.id} currentUser={{ username, unlockedAchievements: details.numAwardedToUser, totalAchievements: details.numAchievements }} />
       </View>}
     </View>
   </View>;
