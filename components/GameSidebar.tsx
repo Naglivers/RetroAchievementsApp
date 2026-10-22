@@ -1,14 +1,19 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { GameLeaderboard, GameProgression, getAchievementDistribution, getGameLeaderboards, getGameProgression, getRecentMasteries, getUserProfile, RecentMastery } from '../src/retroachievements';
 
 type ComparedUserProgress = { username: string; avatarUrl: string; unlockedAchievements: number; totalAchievements: number };
 type Props = { apiKey: string; gameId: number; currentUser?: { username: string; unlockedAchievements: number; totalAchievements: number } };
 const number = (value: number) => value.toLocaleString('pt-BR');
 const duration = (seconds: number) => seconds ? `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m` : '—';
+function baseSidebarStyles() { return styles; }
 
 export function GameSidebar({ apiKey, gameId, currentUser }: Props) {
+  const { width } = useWindowDimensions();
+  const compact = width < 1050;
+  const styles = compact ? { ...baseSidebarStyles(), ...phoneStyles } : baseSidebarStyles();
+  const compare = compact ? { ...desktopCompare, ...phoneCompare } : desktopCompare;
   const [data, setData] = useState<GameProgression | null>(null);
   const [mode, setMode] = useState<'casual' | 'hardcore'>('hardcore');
   const [distribution, setDistribution] = useState<Record<number, number>>({});
@@ -66,8 +71,8 @@ export function GameSidebar({ apiKey, gameId, currentUser }: Props) {
   return <View style={styles.sidebar}>
     <Text style={styles.heading}>Tempo de Jogo</Text>
     <View style={styles.tabs}>
-      <Pressable onPress={() => setMode('casual')}><Text style={[styles.tabMuted, mode === 'casual' && styles.tabOn]}>Casual</Text></Pressable>
-      <Pressable onPress={() => setMode('hardcore')}><Text style={[styles.tabMuted, mode === 'hardcore' && styles.tabOn]}>Hardcore</Text></Pressable>
+      <Pressable accessibilityRole="tab" accessibilityState={{ selected: mode === 'casual' }} style={compact && phoneStyles.modeButton} onPress={() => setMode('casual')}><Text style={[styles.tabMuted, mode === 'casual' && styles.tabOn]}>Casual</Text></Pressable>
+      <Pressable accessibilityRole="tab" accessibilityState={{ selected: mode === 'hardcore' }} style={compact && phoneStyles.modeButton} onPress={() => setMode('hardcore')}><Text style={[styles.tabMuted, mode === 'hardcore' && styles.tabOn]}>Hardcore</Text></Pressable>
     </View>
     <View style={styles.card}>{rows.map((row, index) => <View key={row.name} style={[styles.row, index === rows.length - 1 && styles.last]}><Feather name={row.icon} size={16} color={row.gold ? '#f5c518' : '#00aaff'} /><View style={styles.copy}><Text style={[styles.label, row.gold && styles.gold]}>{row.name}</Text><Text style={styles.players}>{number(row.players)} jogadores{row.percent ? ` (${row.percent.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)` : ''}</Text></View>{row.time ? <View><Text style={styles.time}>{duration(row.time)}</Text><Text style={styles.median}>mediano</Text></View> : null}</View>)}</View>
     <Text style={styles.heading}>Comparar Progresso</Text>
@@ -82,6 +87,25 @@ export function GameSidebar({ apiKey, gameId, currentUser }: Props) {
   </View>;
 }
 
+const phoneStyles = StyleSheet.create({
+  sidebar: { width: '100%', minWidth: 0 }, heading: { color: '#f3f4f9', fontWeight: '900', fontSize: 16, marginTop: 26, marginBottom: 12 },
+  tabs: { flexDirection: 'row', gap: 8, backgroundColor: '#151822', padding: 4, borderRadius: 12, marginBottom: 10 },
+  modeButton: { minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center' }, tabMuted: { color: '#9ca5bb', fontSize: 13, fontWeight: '700', paddingVertical: 10, paddingHorizontal: 12 }, tabOn: { color: '#ffe36d', fontSize: 13, borderBottomWidth: 2, borderBottomColor: '#ffe36d', paddingVertical: 10, paddingHorizontal: 12 },
+  card: { backgroundColor: '#151822', borderWidth: 1, borderColor: '#303647', borderRadius: 12, overflow: 'hidden' },
+  row: { minHeight: 76, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: '#303647' }, copy: { flex: 1, minWidth: 0 },
+  label: { color: '#e2e6f0', fontSize: 13, lineHeight: 19, fontWeight: '800' }, players: { color: '#9ca5bb', fontSize: 11, lineHeight: 17, marginTop: 4 }, time: { color: '#f3f4f9', fontSize: 12, textAlign: 'right', fontWeight: '700' }, median: { color: '#9ca5bb', fontSize: 10, marginTop: 4 },
+  chart: { height: 150, padding: 12, flexDirection: 'row', alignItems: 'flex-end', gap: 2, backgroundColor: '#151822', borderWidth: 1, borderColor: '#303647', borderRadius: 12, overflow: 'hidden' }, tick: { color: '#9ca5bb', fontSize: 7, marginTop: 4 },
+  master: { minHeight: 44, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, borderBottomColor: '#303647' }, rank: { color: '#00b8f5', fontSize: 11, width: 26 }, user: { color: '#ffe36d', fontSize: 12, flex: 1, minWidth: 0 }, date: { color: '#9ca5bb', fontSize: 11 },
+  board: { padding: 13, borderBottomWidth: 1, borderBottomColor: '#303647' }, boardTitle: { color: '#ffe36d', fontSize: 13, fontWeight: '800' }, boardDescription: { color: '#9ca5bb', fontSize: 12, lineHeight: 18, marginTop: 5 }, boardScore: { color: '#e2e6f0', fontSize: 12, lineHeight: 18, marginTop: 8 },
+});
+
+const phoneCompare = StyleSheet.create({
+  card: { backgroundColor: '#151822', borderWidth: 1, borderColor: '#303647', borderRadius: 12, paddingVertical: 6 }, row: { minHeight: 46, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  avatar: { width: 26, height: 26, borderRadius: 8, backgroundColor: '#303647', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, initial: { color: '#e2e6f0', fontSize: 12, fontWeight: '800' },
+  name: { color: '#ffe36d', fontSize: 12, fontWeight: '700', flex: 1, minWidth: 0 }, track: { width: '22%', height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: '#303647' }, percent: { width: 34, textAlign: 'right', color: '#9ca5bb', fontSize: 11 },
+  search: { height: 46, margin: 8, paddingHorizontal: 12, borderRadius: 9, backgroundColor: '#1b1e29', borderWidth: 1, borderColor: '#353c50', flexDirection: 'row', alignItems: 'center' }, input: { flex: 1, minWidth: 0, color: '#e2e6f0', fontSize: 14 }, hint: { color: '#9ca5bb', fontSize: 11, paddingHorizontal: 12, paddingBottom: 10, lineHeight: 17 },
+});
+
 const compare = StyleSheet.create({
   card: { backgroundColor: '#1b1b1b', borderWidth: 1, borderColor: '#303030', borderRadius: 5, paddingVertical: 4 },
   row: { height: 25, paddingHorizontal: 7, flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -90,6 +114,8 @@ const compare = StyleSheet.create({
   track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden', backgroundColor: '#303030' }, fill: { height: '100%', backgroundColor: '#e1c500' }, percent: { width: 26, textAlign: 'right', color: '#888', fontSize: 8 },
   search: { height: 28, margin: 5, paddingHorizontal: 7, borderRadius: 4, backgroundColor: '#141414', borderWidth: 1, borderColor: '#414141', flexDirection: 'row', alignItems: 'center' }, input: { flex: 1, color: '#ddd', fontSize: 9 }, hint: { color: '#777', fontSize: 8, paddingHorizontal: 7, paddingBottom: 5, lineHeight: 11 },
 });
+
+const desktopCompare = compare;
 
 function GameSidebarLegacy({ apiKey, gameId }: Props) {
   const [data, setData] = useState<GameProgression | null>(null);
