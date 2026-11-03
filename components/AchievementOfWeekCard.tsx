@@ -1,9 +1,11 @@
 import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useI18n } from '../src/i18n';
 import { AchievementOfWeek, getAchievementOfTheWeek } from '../src/retroachievements';
 
 export function AchievementOfWeekCard({ apiKey }: { apiKey: string }) {
+  const { t, language } = useI18n();
   const compact = useWindowDimensions().width < 700;
   const [item, setItem] = useState<AchievementOfWeek | null>(null);
   const [loading, setLoading] = useState(Boolean(apiKey));
@@ -26,8 +28,8 @@ export function AchievementOfWeekCard({ apiKey }: { apiKey: string }) {
   }, [apiKey, failed, load]);
 
   return <View style={[styles.card, compact && mobile.card]}>
-    <View style={styles.header}><Text style={[styles.kicker, compact && mobile.kicker]}>CONQUISTA DA SEMANA</Text><Feather name="award" size={compact ? 20 : 17} color="#ffe36d" /></View>
-    {loading ? <View style={styles.status}><ActivityIndicator color="#ffe36d" /><Text style={[styles.statusText, compact && mobile.statusText]}>Buscando a conquista da semana…</Text></View> : item ? <>
+    <View style={styles.header}><Text style={[styles.kicker, compact && mobile.kicker]}>{t.weekTitle}</Text><Feather name="award" size={compact ? 20 : 17} color="#ffe36d" /></View>
+    {loading ? <View style={styles.status}><ActivityIndicator color="#ffe36d" /><Text style={[styles.statusText, compact && mobile.statusText]}>{t.weekLoading}</Text></View> : item ? <>
       <View style={[styles.row, compact && mobile.row]}>
         <View style={[styles.icon, compact && mobile.icon]}><Feather name="award" size={28} color="#ffe36d" />{!!item.badgeUrl && <Image source={{ uri: item.badgeUrl }} style={styles.badge} />}</View>
         <View style={styles.copy}>
@@ -36,8 +38,8 @@ export function AchievementOfWeekCard({ apiKey }: { apiKey: string }) {
           <Text style={[styles.game, compact && mobile.game]}>{item.gameTitle} · {item.consoleTitle}</Text>
         </View>
       </View>
-      <View style={[styles.stats, compact && mobile.stats]}><Text style={[styles.stat, compact && mobile.stat]}>{item.points} pts</Text><Text style={[styles.stat, compact && mobile.stat]}>{item.unlocks.toLocaleString('pt-BR')} desbloqueios</Text></View>
-    </> : <View style={styles.status}><Text style={[styles.statusText, compact && mobile.statusText]}>{failed ? 'Não foi possível carregar agora. Tentando novamente em instantes…' : 'Nenhuma conquista disponível.'}</Text><Pressable accessibilityRole="button" onPress={load} style={[styles.retry, compact && mobile.retry]}><Feather name="refresh-cw" size={15} color="#171923" /><Text style={[styles.retryText, compact && mobile.retryText]}>Tentar agora</Text></Pressable></View>}
+      <View style={[styles.stats, compact && mobile.stats]}><Text style={[styles.stat, compact && mobile.stat]}>{item.points.toLocaleString(language)} pts</Text><Text style={[styles.stat, compact && mobile.stat]}>{item.unlocks.toLocaleString(language)} {item.unlocks === 1 ? t.weekUnlock : t.weekUnlocks}</Text></View>
+    </> : <View style={styles.status}><Text style={[styles.statusText, compact && mobile.statusText]}>{failed ? t.weekError : t.weekEmpty}</Text><Pressable accessibilityRole="button" onPress={load} style={[styles.retry, compact && mobile.retry]}><Feather name="refresh-cw" size={15} color="#171923" /><Text style={[styles.retryText, compact && mobile.retryText]}>{t.feedTryNow}</Text></Pressable></View>}
   </View>;
 }
 

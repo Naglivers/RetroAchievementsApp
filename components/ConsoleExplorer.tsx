@@ -3,11 +3,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { getAllUserGameProgress, getConsoleGameCount, getConsoleGames, getConsoles, RetroConsole, UserGameProgress } from '../src/retroachievements';
 import { CachedConsoleUserStats, loadConsoleGameCounts, loadConsoleUserStats, saveConsoleGameCounts, saveConsoleUserStats } from '../src/credentials';
+import { useI18n } from '../src/i18n';
 
 type ConsoleStats = { total: number | null; played: number; mastered: number; loaded: boolean };
 const normalize = (value: string) => value.trim().toLocaleLowerCase();
 
 export function ConsoleExplorer({ apiKey, username, onOpenSettings, onOpenConsole, onOpenGame }: { apiKey: string; username: string; onOpenSettings: () => void; onOpenConsole: (console: RetroConsole) => void; onOpenGame: (game: UserGameProgress) => void }) {
+  const { t, language } = useI18n();
   const { width } = useWindowDimensions();
   const mobile = width < 900;
   const phone = width < 600;
@@ -133,24 +135,24 @@ export function ConsoleExplorer({ apiKey, username, onOpenSettings, onOpenConsol
   return <View style={[styles.page, mobile && small.page]}>
     <View style={[styles.heading, mobile && small.heading]}>
       <View style={mobile && small.headingCopy}>
-        <Text style={[styles.title, mobile && small.title]}>Explorar consoles</Text>
-        <Text style={[styles.subtitle, mobile && small.subtitle]}>Todos os sistemas ativos do RetroAchievements.</Text>
+        <Text style={[styles.title, mobile && small.title]}>{t.exploreTitle}</Text>
+        <Text style={[styles.subtitle, mobile && small.subtitle]}>{t.exploreDescription}</Text>
       </View>
       <View style={[styles.headingActions, mobile && small.headingActions]}>
         <Pressable accessibilityRole="button" disabled={!consoles.length || luckyLoading} onPress={openLuckyGame} style={[styles.lucky, mobile && small.lucky, (!consoles.length || luckyLoading) && styles.luckyDisabled]}>
           {luckyLoading ? <ActivityIndicator size="small" color="#2d2608" /> : <Feather name="shuffle" size={16} color="#2d2608" />}
-          <Text style={[styles.luckyText, mobile && small.luckyText]}>{luckyLoading ? 'SORTEANDO…' : 'ESTOU COM SORTE'}</Text>
+          <Text style={[styles.luckyText, mobile && small.luckyText]}>{luckyLoading ? t.exploreLuckyLoading : t.exploreLucky}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Atualizar consoles" onPress={load} style={[styles.refresh, mobile && small.refresh]}><Feather name="refresh-cw" size={18} color="#ffe36d" /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={t.exploreRefresh} onPress={load} style={[styles.refresh, mobile && small.refresh]}><Feather name="refresh-cw" size={18} color="#ffe36d" /></Pressable>
       </View>
     </View>
-    {!apiKey ? <Pressable accessibilityRole="button" onPress={onOpenSettings} style={styles.connect}><Feather name="key" size={18} color="#ffe36d" /><Text style={[styles.connectText, mobile && small.connectText]}>Conecte sua API key para carregar os consoles</Text><Feather name="chevron-right" size={18} color="#ffe36d" /></Pressable> : <>
-      <View style={[styles.search, mobile && small.search]}><Feather name="search" size={18} color="#969eb2" /><TextInput value={query} onChangeText={setQuery} placeholder="Buscar console" accessibilityLabel="Buscar console" autoCorrect={false} placeholderTextColor="#747c91" style={[styles.input, mobile && small.input]} />{!!query && <Pressable accessibilityRole="button" accessibilityLabel="Limpar busca" onPress={() => setQuery('')} style={small.clearSearch}><Feather name="x" size={18} color="#a8b0c4" /></Pressable>}</View>
-      {loading && consoles.length === 0 ? <View style={styles.status}><ActivityIndicator color="#ffe36d" /><Text style={[styles.statusText, mobile && small.statusText]}>Carregando consoles…</Text></View> : null}
-      {!loading && consoles.length === 0 ? <View style={styles.status}><Text style={[styles.statusText, mobile && small.statusText]}>{failed ? 'Não foi possível carregar os consoles. Tentando novamente…' : 'Nenhum console encontrado.'}</Text><Pressable accessibilityRole="button" onPress={load} style={[styles.retry, mobile && small.retry]}><Text style={[styles.retryText, mobile && small.retryText]}>Tentar agora</Text></Pressable></View> : null}
-      {failed && consoles.length > 0 && <Text style={small.notice}>Não foi possível carregar algumas informações. Tentaremos novamente automaticamente.</Text>}
-      <Text style={[styles.count, mobile && small.count]}>{filtered.length} consoles</Text>
-      {consoles.length > 0 && filtered.length === 0 && <View style={styles.status}><Feather name="search" size={24} color="#a993ff" /><Text style={[styles.statusText, mobile && small.statusText]}>Nenhum console encontrado para “{query}”.</Text></View>}
+    {!apiKey ? <Pressable accessibilityRole="button" onPress={onOpenSettings} style={styles.connect}><Feather name="key" size={18} color="#ffe36d" /><Text style={[styles.connectText, mobile && small.connectText]}>{t.exploreConnect}</Text><Feather name="chevron-right" size={18} color="#ffe36d" /></Pressable> : <>
+      <View style={[styles.search, mobile && small.search]}><Feather name="search" size={18} color="#969eb2" /><TextInput value={query} onChangeText={setQuery} placeholder={t.exploreSearch} accessibilityLabel={t.exploreSearch} autoCorrect={false} placeholderTextColor="#747c91" style={[styles.input, mobile && small.input]} />{!!query && <Pressable accessibilityRole="button" accessibilityLabel={t.exploreClearSearch} onPress={() => setQuery('')} style={small.clearSearch}><Feather name="x" size={18} color="#a8b0c4" /></Pressable>}</View>
+      {loading && consoles.length === 0 ? <View style={styles.status}><ActivityIndicator color="#ffe36d" /><Text style={[styles.statusText, mobile && small.statusText]}>{t.exploreLoading}</Text></View> : null}
+      {!loading && consoles.length === 0 ? <View style={styles.status}><Text style={[styles.statusText, mobile && small.statusText]}>{failed ? t.exploreError : t.exploreEmpty}</Text><Pressable accessibilityRole="button" onPress={load} style={[styles.retry, mobile && small.retry]}><Text style={[styles.retryText, mobile && small.retryText]}>{t.exploreRetry}</Text></Pressable></View> : null}
+      {failed && consoles.length > 0 && <Text style={small.notice}>{t.explorePartialError}</Text>}
+      <Text style={[styles.count, mobile && small.count]}>{filtered.length.toLocaleString(language)} {t.exploreConsoles}</Text>
+      {consoles.length > 0 && filtered.length === 0 && <View style={styles.status}><Feather name="search" size={24} color="#a993ff" /><Text style={[styles.statusText, mobile && small.statusText]}>{t.exploreNoConsole(query)}</Text></View>}
       <View style={[styles.grid, mobile && small.grid]}>{filtered.map((console) => {
         const progress = stats[console.id] ?? { total: 0, played: 0, mastered: 0, loaded: false };
         const total = progress.total ?? 0;
@@ -158,15 +160,15 @@ export function ConsoleExplorer({ apiKey, username, onOpenSettings, onOpenConsol
         const playedPercent = total ? Math.min(100 - masteredPercent, ((progress.played - progress.mastered) / total) * 100) : 0;
         const consolePercent = total ? Math.min(100, Math.round((progress.played / total) * 100)) : 0;
         const isConsoleMastered = total > 0 && progress.mastered >= total;
-        return <Pressable accessibilityRole="button" accessibilityLabel={`Ver jogos de ${console.name}`} key={console.id} onPress={() => onOpenConsole(console)} style={[styles.console, mobile && small.console, mobile && { width: phone ? '100%' : '48.5%' }, isConsoleMastered && styles.consoleMastered]}>
+        return <Pressable accessibilityRole="button" accessibilityLabel={t.exploreOpenConsole(console.name)} key={console.id} onPress={() => onOpenConsole(console)} style={[styles.console, mobile && small.console, mobile && { width: phone ? '100%' : '48.5%' }, isConsoleMastered && styles.consoleMastered]}>
           <View style={styles.consoleTop}>
             <View style={[styles.icon, mobile && small.icon]}><Feather name="cpu" size={23} color="#ffe36d" />{!!console.iconUrl && <Image source={{ uri: console.iconUrl }} style={styles.iconImage} />}</View>
             <Text numberOfLines={2} style={[styles.consoleName, mobile && small.consoleName]}>{console.name}</Text>
             {isConsoleMastered ? <View style={styles.masteryMedal}><Feather name="award" size={14} color="#2d2608" /><Text style={styles.masteryMedalText}>100%</Text></View> : mobile && <Feather name="chevron-right" size={18} color="#7d869d" />}
           </View>
           <View style={[styles.bar, mobile && small.bar]}><View style={[styles.masteredSegment, { width: `${masteredPercent}%` }]} /><View style={[styles.playedSegment, { left: `${masteredPercent}%`, width: `${playedPercent}%` }]} /></View>
-          <View style={[styles.statsRow, mobile && small.statsRow]}><Text style={[styles.masteredText, mobile && small.statsText]}>{progress.mastered} masterizados</Text><Text style={[styles.playedText, mobile && small.statsText]}>{Math.max(0, progress.played - progress.mastered)} jogados</Text></View>
-          <View style={styles.totalRow}><Text style={[styles.totalText, mobile && small.totalText]}>{total} jogos no console</Text><Text style={[styles.consolePercent, mobile && small.consolePercent]}>{consolePercent}%</Text></View>
+          <View style={[styles.statsRow, mobile && small.statsRow]}><Text style={[styles.masteredText, mobile && small.statsText]}>{progress.mastered.toLocaleString(language)} {t.exploreMastered}</Text><Text style={[styles.playedText, mobile && small.statsText]}>{Math.max(0, progress.played - progress.mastered).toLocaleString(language)} {t.explorePlayed}</Text></View>
+          <View style={styles.totalRow}><Text style={[styles.totalText, mobile && small.totalText]}>{total.toLocaleString(language)} {t.exploreTotalGames}</Text><Text style={[styles.consolePercent, mobile && small.consolePercent]}>{consolePercent}%</Text></View>
         </Pressable>;
       })}</View>
     </>}

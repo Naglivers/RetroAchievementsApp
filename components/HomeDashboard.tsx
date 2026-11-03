@@ -1,6 +1,7 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useI18n } from '../src/i18n';
 
 import { AchievementOfWeekCard } from './AchievementOfWeekCard';
 import { CommunityFeed } from './CommunityFeed';
@@ -18,6 +19,7 @@ function GameIcon({ icon, compact = false }: { icon: string; compact?: boolean }
 }
 
 export function HomeDashboard({ apiKey, username, onOpenSettings, onOpenGame }: Props) {
+  const { t, language } = useI18n();
   const compact = useWindowDimensions().width < 700;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [awards, setAwards] = useState<RecentAward[]>([]);
@@ -75,10 +77,10 @@ export function HomeDashboard({ apiKey, username, onOpenSettings, onOpenGame }: 
         <View style={styles.lastGameHeader}>
           <GameIcon icon={lastGame.imageIcon} compact={compact} />
           <View style={styles.lastGameCopy}>
-            <Text style={[styles.eyebrow, compact && mobile.eyebrow]}>ÚLTIMO JOGO JOGADO · {lastGame.consoleName}</Text>
+            <Text style={[styles.eyebrow, compact && mobile.eyebrow]}>{t.dashboardLastPlayed} · {lastGame.consoleName}</Text>
             <View style={[styles.lastGameTitleRow, compact && mobile.lastGameTitleRow]}>
               <Text numberOfLines={compact ? 3 : 1} style={[styles.title, styles.lastGameTitle, compact && mobile.title]}>{lastGame.title}</Text>
-              {lastProgress === 100 && <View style={styles.mastered}><Feather name="award" size={14} color="#251e04" /><Text style={styles.masteredText}>MASTERIZADO</Text></View>}
+              {lastProgress === 100 && <View style={styles.mastered}><Feather name="award" size={14} color="#251e04" /><Text style={styles.masteredText}>{t.dashboardMastered}</Text></View>}
             </View>
           </View>
         </View>
@@ -91,21 +93,21 @@ export function HomeDashboard({ apiKey, username, onOpenSettings, onOpenGame }: 
           {lastProgress < 100 && <View style={[styles.nextAchievement, compact && mobile.nextAchievement]}>
             <View style={[styles.nextBadge, compact && mobile.nextBadge]}><Feather name="target" size={15} color="#ffe36d" />{!!nextAchievement?.badgeUrl && <Image source={{ uri: media(nextAchievement.badgeUrl) }} style={styles.nextBadgeImage} />}</View>
             <View style={styles.nextCopy}>
-              <Text style={[styles.nextLabel, compact && mobile.nextLabel]}>PRÓXIMA CONQUISTA</Text>
-              <Text numberOfLines={compact ? 2 : 1} style={[styles.nextTitle, compact && mobile.nextTitle]}>{nextAchievement?.title || 'Abra o jogo para continuar a jornada'}</Text>
-              <Text numberOfLines={compact ? 2 : 1} style={[styles.nextDescription, compact && mobile.nextDescription]}>{nextAchievement?.description || 'Veja todas as conquistas disponíveis'}</Text>
+              <Text style={[styles.nextLabel, compact && mobile.nextLabel]}>{t.dashboardNextAchievement}</Text>
+              <Text numberOfLines={compact ? 2 : 1} style={[styles.nextTitle, compact && mobile.nextTitle]}>{nextAchievement?.title || t.dashboardContinueJourney}</Text>
+              <Text numberOfLines={compact ? 2 : 1} style={[styles.nextDescription, compact && mobile.nextDescription]}>{nextAchievement?.description || t.dashboardAllAchievements}</Text>
             </View>
             <Feather name="chevron-right" size={20} color="#d6ceea" />
           </View>}
         </View>
-      </Pressable> : <View style={[styles.lastGameCopy, compact && mobile.heroContent]}><Text style={[styles.eyebrow, compact && mobile.eyebrow]}>SEU ÚLTIMO JOGO</Text><Text style={[styles.title, compact && mobile.title]}>{loading && apiKey ? 'Carregando seu progresso…' : 'Seu próximo checkpoint'}</Text><Text style={[styles.subtitle, compact && mobile.subtitle]}>Conecte uma conta com atividade recente para ver a próxima conquista aqui.</Text></View>}
-      <Pressable accessibilityRole="button" onPress={refresh} style={[styles.refresh, compact && mobile.refresh]}><Feather name="refresh-cw" size={15} color="#171923" /><Text style={[styles.refreshText, compact && mobile.refreshText]}>Atualizar</Text></Pressable>
+      </Pressable> : <View style={[styles.lastGameCopy, compact && mobile.heroContent]}><Text style={[styles.eyebrow, compact && mobile.eyebrow]}>{t.dashboardYourLastGame}</Text><Text style={[styles.title, compact && mobile.title]}>{loading && apiKey ? t.dashboardLoadingProgress : t.dashboardNextCheckpoint}</Text><Text style={[styles.subtitle, compact && mobile.subtitle]}>{t.dashboardConnectRecent}</Text></View>}
+      <Pressable accessibilityRole="button" onPress={refresh} style={[styles.refresh, compact && mobile.refresh]}><Feather name="refresh-cw" size={15} color="#171923" /><Text style={[styles.refreshText, compact && mobile.refreshText]}>{t.refresh}</Text></Pressable>
     </View>
-    {!apiKey ? <Pressable accessibilityRole="button" onPress={onOpenSettings} style={styles.connect}><Feather name="key" size={17} color="#ffe36d" /><Text style={[styles.connectText, compact && mobile.connectText]}>Conecte sua conta para ver a Home ao vivo</Text><Feather name="chevron-right" size={18} color="#ffe36d" /></Pressable> : loading && awards.length === 0 ? <View style={styles.loading}><ActivityIndicator color="#ffe36d" /></View> : <>
-      <Text style={[styles.section, compact && mobile.section]}>Em alta agora</Text>
-      <View style={[styles.trending, compact && mobile.trending]}>{trending.map((game, index) => <Pressable accessibilityRole="button" key={game.gameId} onPress={() => openGame(game)} style={[styles.game, compact && mobile.game]}><Text style={[styles.rank, compact && mobile.rank]}>{index + 1}</Text><GameIcon icon={game.icon} compact={compact} /><View style={styles.gameCopy}><Text numberOfLines={compact ? 2 : 1} style={[styles.gameTitle, compact && mobile.gameTitle]}>{game.title}</Text><Text style={[styles.console, compact && mobile.console]}>{game.consoleName}</Text><Text style={[styles.activity, compact && mobile.activity]}>{game.count} conquistas recentes</Text></View>{compact && <Feather name="chevron-right" size={18} color="#8f98ad" />}</Pressable>)}</View>
-      {trending.length === 0 && <Text style={styles.empty}>Ainda não há jogos para mostrar.</Text>}
-      {!!profile && <View style={[styles.presence, compact && mobile.presence]}><View style={styles.online} /><View style={styles.presenceCopy}><Text style={[styles.presenceLabel, compact && mobile.presenceLabel]}>SUA PRESENÇA</Text><Text style={[styles.presenceName, compact && mobile.presenceName]}>{profile.username}</Text><Text numberOfLines={compact ? 3 : 2} style={[styles.presenceText, compact && mobile.presenceText]}>{profile.richPresence || (profile.lastGameTitle ? `Jogou ${profile.lastGameTitle} recentemente` : 'Sem atividade recente')}</Text></View></View>}
+    {!apiKey ? <Pressable accessibilityRole="button" onPress={onOpenSettings} style={styles.connect}><Feather name="key" size={17} color="#ffe36d" /><Text style={[styles.connectText, compact && mobile.connectText]}>{t.dashboardConnectLive}</Text><Feather name="chevron-right" size={18} color="#ffe36d" /></Pressable> : loading && awards.length === 0 ? <View style={styles.loading}><ActivityIndicator color="#ffe36d" /></View> : <>
+      <Text style={[styles.section, compact && mobile.section]}>{t.dashboardTrending}</Text>
+      <View style={[styles.trending, compact && mobile.trending]}>{trending.map((game, index) => <Pressable accessibilityRole="button" key={game.gameId} onPress={() => openGame(game)} style={[styles.game, compact && mobile.game]}><Text style={[styles.rank, compact && mobile.rank]}>{index + 1}</Text><GameIcon icon={game.icon} compact={compact} /><View style={styles.gameCopy}><Text numberOfLines={compact ? 2 : 1} style={[styles.gameTitle, compact && mobile.gameTitle]}>{game.title}</Text><Text style={[styles.console, compact && mobile.console]}>{game.consoleName}</Text><Text style={[styles.activity, compact && mobile.activity]}>{game.count.toLocaleString(language)} {game.count === 1 ? t.dashboardRecentAward : t.dashboardRecentAwards}</Text></View>{compact && <Feather name="chevron-right" size={18} color="#8f98ad" />}</Pressable>)}</View>
+      {trending.length === 0 && <Text style={styles.empty}>{t.dashboardNoGames}</Text>}
+      {!!profile && <View style={[styles.presence, compact && mobile.presence]}><View style={styles.online} /><View style={styles.presenceCopy}><Text style={[styles.presenceLabel, compact && mobile.presenceLabel]}>{t.dashboardPresence}</Text><Text style={[styles.presenceName, compact && mobile.presenceName]}>{profile.username}</Text><Text numberOfLines={compact ? 3 : 2} style={[styles.presenceText, compact && mobile.presenceText]}>{profile.richPresence || (profile.lastGameTitle ? t.dashboardPlayedRecently.replace('{game}', profile.lastGameTitle) : t.dashboardNoActivity)}</Text></View></View>}
       <View style={[styles.split, compact && mobile.split]}><View style={[styles.splitMain, compact && mobile.splitColumn]}><CommunityFeed apiKey={apiKey} onOpenSettings={onOpenSettings} /></View><View style={[styles.splitSide, compact && mobile.splitColumn]}><AchievementOfWeekCard apiKey={apiKey} /></View></View>
     </>}
   </View>;

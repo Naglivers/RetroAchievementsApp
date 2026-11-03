@@ -2,8 +2,9 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import type { ScrollViewInstance, ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getAppLanguage, getTranslation } from '../src/i18n';
+import { supportedLanguages, useI18n } from '../src/i18n';
 import { clearCredentials, loadCredentials, saveCredentials } from '../src/credentials';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { CommunityFeed } from '../components/CommunityFeed';
@@ -27,6 +28,20 @@ const weeklyGoals = [
 ];
 const headerProfileStyles = StyleSheet.create({ wrapper: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 190, minHeight: 44, justifyContent: 'center' }, name: { color: '#d7dceb', fontSize: 11, fontWeight: '800', maxWidth: 130 }, avatar: { overflow: 'hidden', borderRadius: 14, borderWidth: 0, backgroundColor: '#2b293d' }, image: { width: '100%', height: '100%', borderRadius: 14 } });
 
+const SafeAreaContainer = Platform.OS === 'web' ? View : SafeAreaView;
+// React Native Web accepts CSS lengths; native screens keep numeric safe-area insets.
+const webInset = (edge: 'top' | 'right' | 'bottom' | 'left', minimum = 0) => (
+  minimum ? `max(${minimum}px, env(safe-area-inset-${edge}, 0px))` : `env(safe-area-inset-${edge}, 0px)`
+) as ViewStyle['paddingTop'];
+const webSafeAreaStyles = StyleSheet.create({
+  page: { paddingTop: webInset('top'), paddingRight: webInset('right'), paddingLeft: webInset('left') },
+  desktopPage: { paddingBottom: webInset('bottom') },
+  navigation: { paddingBottom: webInset('bottom', 10) },
+  modalOverlay: { paddingTop: webInset('top', 48), paddingRight: webInset('right'), paddingLeft: webInset('left') },
+  desktopModalOverlay: { paddingTop: webInset('top', 20), paddingRight: webInset('right', 20), paddingBottom: webInset('bottom', 20), paddingLeft: webInset('left', 20) },
+  modalBody: { paddingBottom: webInset('bottom', 20) },
+});
+
 function SectionTitle({ title, action }: { title: string; action?: string }) {
   return <View style={styles.sectionHead}><Text style={styles.sectionTitle}>{title}</Text>{action && <Text style={styles.action}>{action}</Text>}</View>;
 }
@@ -43,12 +58,12 @@ export default function Home() {
   const [headerProfile, setHeaderProfile] = useState({ username: '', avatar: '' });
   const [selectedGame, setSelectedGame] = useState<UserGameProgress | null>(null);
   const [selectedConsole, setSelectedConsole] = useState<RetroConsole | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && width >= 900;
-  const language = getAppLanguage();
-  const t = getTranslation(language);
+  const { language, languagePreference, setLanguage, languageSaveError, t } = useI18n();
+  const languageOptions = [{ code: 'system', label: t.languageAutomatic }, ...supportedLanguages] as const;
   const tabs = [t.home, t.explore, t.activity, t.profile];
   const icons: Record<string, keyof typeof Ionicons.glyphMap> = { [t.home]: 'home', [t.explore]: 'compass', [t.activity]: 'pulse', [t.profile]: 'person' };
   const deviceDate = new Intl.DateTimeFormat(language, { weekday: 'long', day: '2-digit', month: 'short' }).format(new Date()).toUpperCase();
@@ -113,7 +128,7 @@ export default function Home() {
     setSaved(false);
   }
 
-  return <SafeAreaView edges={isDesktop ? ['top', 'bottom', 'left', 'right'] : ['top', 'left', 'right']} style={styles.safe}><View style={[styles.page, isDesktop && styles.desktopPage]}>
+  return <SafeAreaContainer {...(Platform.OS === 'web' ? {} : { edges: ['top', 'left', 'right'] as const })} style={[styles.safe, Platform.OS === 'web' && webSafeAreaStyles.page, isDesktop && webSafeAreaStyles.desktopPage]}><View style={[styles.page, isDesktop && styles.desktopPage]}>
     <ScrollView ref={scrollRef} style={mobile.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, !isDesktop && mobile.content, isDesktop && styles.desktopContent]}>
       <View style={[styles.topbar, !isDesktop && mobile.topbar, isDesktop && styles.desktopTopbar]}><View style={mobile.brandCopy}>{!isDesktop && <View style={mobile.brandRow}><View style={mobile.brandMark}><Feather name="award" size={21} color="#ffe36d" /></View><Text style={[styles.brand, mobile.brand]}>CHECKPOINT</Text></View>}<Text numberOfLines={1} style={[styles.tagline, !isDesktop && mobile.tagline, isDesktop && styles.desktopPageTitle]}>{isDesktop ? t.overview : t.subtitle}</Text></View>{isDesktop && <Text style={styles.desktopDate}>{deviceDate}</Text>}<View style={[styles.headerActions, !isDesktop && mobile.headerActions]}><Pressable accessibilityRole="button" accessibilityLabel={t.settings} onPress={() => setSettingsOpen(true)} style={[styles.settingsButton, !isDesktop && mobile.settingsButton]}><Feather name="settings" size={18} color="#c5cada" /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={t.profile} onPress={() => { setActiveTab(3); setSelectedConsole(null); setSelectedGame(null); }} style={headerProfileStyles.wrapper}>{isDesktop && !!headerProfile.username && <Text numberOfLines={1} style={headerProfileStyles.name}>{headerProfile.username}</Text>}<View style={[styles.avatar, headerProfileStyles.avatar]}>{headerProfile.avatar ? <Image source={{ uri: headerProfile.avatar.startsWith('http') ? headerProfile.avatar : `https://media.retroachievements.org${headerProfile.avatar}` }} style={headerProfileStyles.image} /> : <Text style={styles.avatarText}>{(headerProfile.username || username || 'N').slice(0, 1).toUpperCase()}</Text>}</View></Pressable></View></View>
       {selectedGame ? <GameDetail game={selectedGame} apiKey={apiKey} username={username} onBack={() => setSelectedGame(null)} /> : selectedConsole ? <ConsoleGames apiKey={apiKey} username={username} console={selectedConsole} onBack={() => setSelectedConsole(null)} onOpenGame={setSelectedGame} /> : activeTab === 2 ? <ActivityFeed apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} /> : activeTab === 1 ? <ConsoleExplorer apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenConsole={setSelectedConsole} onOpenGame={setSelectedGame} /> : activeTab === 0 ? <HomeDashboard apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} /> : activeTab === 3 ? <ProfileScreen apiKey={apiKey} username={username} onOpenSettings={() => setSettingsOpen(true)} onOpenGame={setSelectedGame} onApiAvailabilityChange={onApiAvailabilityChange} /> : <>
@@ -134,18 +149,28 @@ export default function Home() {
       <CommunityFeed apiKey={apiKey} onOpenSettings={() => setSettingsOpen(true)} />
       </>}
     </ScrollView>
-    <View style={[styles.nav, !isDesktop && mobile.nav, !isDesktop && { paddingBottom: Math.max(insets.bottom, 10) }, isDesktop && styles.desktopNav]}>{isDesktop && <><View style={styles.desktopBrand}><Text style={styles.brand}>CHECKPOINT</Text><Text style={styles.tagline}>{t.desktopSubtitle}</Text></View><Text style={styles.desktopNavCaption}>{t.navigation}</Text></>}{tabs.map((tab, index) => { const active = activeTab === index; const icon = icons[tab]; return <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected: active }} accessibilityLabel={tab} onPress={() => { setActiveTab(index); setSelectedConsole(null); setSelectedGame(null); }} style={[styles.navItem, !isDesktop && mobile.navItem, active && !isDesktop && mobile.navItemActive, isDesktop && styles.desktopNavItem, active && isDesktop && styles.desktopNavItemActive]}><Ionicons name={active ? icon : `${icon}-outline` as keyof typeof Ionicons.glyphMap} size={isDesktop ? 21 : 23} color={active ? '#ffe36d' : '#929aaf'} /><Text numberOfLines={1} style={[styles.navText, !isDesktop && mobile.navText, isDesktop && styles.desktopNavText, active && styles.navTextActive]}>{tab}</Text></Pressable>; })}{isDesktop && <Pressable onPress={() => setSettingsOpen(true)} style={styles.desktopNavFooter}><Feather name="settings" size={17} color="#858ca1" /><Text style={styles.desktopSettings}>{t.settings}</Text></Pressable>}</View>
+    <View style={[styles.nav, !isDesktop && mobile.nav, !isDesktop && (Platform.OS === 'web' ? webSafeAreaStyles.navigation : { paddingBottom: Math.max(insets.bottom, 10) }), isDesktop && styles.desktopNav]}>{isDesktop && <><View style={styles.desktopBrand}><Text style={styles.brand}>CHECKPOINT</Text><Text style={styles.tagline}>{t.desktopSubtitle}</Text></View><Text style={styles.desktopNavCaption}>{t.navigation}</Text></>}{tabs.map((tab, index) => { const active = activeTab === index; const icon = icons[tab]; return <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected: active }} accessibilityLabel={tab} onPress={() => { setActiveTab(index); setSelectedConsole(null); setSelectedGame(null); }} style={[styles.navItem, !isDesktop && mobile.navItem, active && !isDesktop && mobile.navItemActive, isDesktop && styles.desktopNavItem, active && isDesktop && styles.desktopNavItemActive]}><Ionicons name={active ? icon : `${icon}-outline` as keyof typeof Ionicons.glyphMap} size={isDesktop ? 21 : 23} color={active ? '#ffe36d' : '#929aaf'} /><Text numberOfLines={1} style={[styles.navText, !isDesktop && mobile.navText, isDesktop && styles.desktopNavText, active && styles.navTextActive]}>{tab}</Text></Pressable>; })}{isDesktop && <Pressable onPress={() => setSettingsOpen(true)} style={styles.desktopNavFooter}><Feather name="settings" size={17} color="#858ca1" /><Text style={styles.desktopSettings}>{t.settings}</Text></Pressable>}</View>
     <Modal transparent visible={settingsOpen} animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.modalOverlay, !isDesktop && mobile.modalOverlay]}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.modalOverlay, !isDesktop && mobile.modalOverlay, Platform.OS === 'web' && (isDesktop ? webSafeAreaStyles.desktopModalOverlay : webSafeAreaStyles.modalOverlay)]}>
         <View style={[styles.modalCard, mobile.modalCard, !isDesktop && mobile.modalCardPhone]}>
           {!isDesktop && <View style={mobile.sheetHandle} />}
-          <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[mobile.modalBody, !isDesktop && { paddingBottom: Math.max(insets.bottom, 20) }]}>
+          <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[mobile.modalBody, !isDesktop && (Platform.OS === 'web' ? webSafeAreaStyles.modalBody : { paddingBottom: Math.max(insets.bottom, 20) })]}>
             <View style={styles.modalHeader}>
-              <View style={mobile.modalCopy}><Text style={[styles.modalTitle, !isDesktop && mobile.modalTitle]}>{t.settingsTitle}</Text><Text style={[styles.modalDescription, !isDesktop && mobile.modalDescription]}>{t.settingsDescription}</Text></View>
+              <View style={mobile.modalCopy}><Text style={[styles.modalTitle, !isDesktop && mobile.modalTitle]}>{t.settings}</Text><Text style={[styles.modalDescription, !isDesktop && mobile.modalDescription]}>{t.preferencesDescription}</Text></View>
               <Pressable accessibilityRole="button" accessibilityLabel={t.cancel} onPress={() => setSettingsOpen(false)} style={mobile.closeButton}><Feather name="x" size={20} color="#d6d9e5" /></Pressable>
             </View>
+            <Text style={[styles.fieldLabel, mobile.fieldLabel]}>{t.language}</Text>
+            <View accessibilityRole="radiogroup" accessibilityLabel={t.language} style={languageStyles.options}>
+              {languageOptions.map((option) => <Pressable key={option.code} accessibilityRole="radio" accessibilityLabel={option.label} accessibilityState={{ checked: languagePreference === option.code }} aria-checked={languagePreference === option.code} onPress={() => setLanguage(option.code)} style={[languageStyles.option, option.code === 'system' && languageStyles.automaticOption, languagePreference === option.code && languageStyles.selected]}>
+                <Text style={[languageStyles.label, languagePreference === option.code && languageStyles.selectedLabel]}>{option.label}</Text>
+                {languagePreference === option.code && <Feather name="check" size={16} color="#ffe36d" />}
+              </Pressable>)}
+            </View>
+            <Text style={languageStyles.hint}>{t.languageHint}</Text>
+            {languageSaveError && <Text accessibilityLiveRegion="polite" style={languageStyles.error}>{t.languageSaveError}</Text>}
+            <Text style={languageStyles.sectionTitle}>{t.settingsTitle}</Text>
             <Text style={[styles.fieldLabel, mobile.fieldLabel]}>{t.username}</Text>
-            <TextInput autoCapitalize="none" autoCorrect={false} value={username} onChangeText={(value) => { setUsername(value); setCredentialsError(false); setSaved(false); }} placeholder="RetroAchievements username" placeholderTextColor="#747c91" accessibilityLabel={t.username} style={[styles.modalInput, mobile.modalInput]} />
+            <TextInput autoCapitalize="none" autoCorrect={false} value={username} onChangeText={(value) => { setUsername(value); setCredentialsError(false); setSaved(false); }} placeholder={t.usernamePlaceholder} placeholderTextColor="#747c91" accessibilityLabel={t.username} style={[styles.modalInput, mobile.modalInput]} />
             <Text style={[styles.fieldLabel, mobile.fieldLabel]}>{t.apiKey}</Text>
             <TextInput autoCapitalize="none" autoCorrect={false} secureTextEntry value={apiKey} onChangeText={(value) => { setApiKey(value); setCredentialsError(false); setSaved(false); }} placeholder="••••••••••••••••" placeholderTextColor="#747c91" accessibilityLabel={t.apiKey} style={[styles.modalInput, mobile.modalInput]} />
             <Text style={[styles.keyHint, mobile.hint]}>{t.apiKeyHint}</Text>
@@ -158,8 +183,20 @@ export default function Home() {
         </View>
       </KeyboardAvoidingView>
     </Modal>
-  </View></SafeAreaView>;
+  </View></SafeAreaContainer>;
 }
+
+const languageStyles = StyleSheet.create({
+  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  automaticOption: { width: '100%' },
+  option: { flexGrow: 1, minHeight: 46, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#353b4d', backgroundColor: '#12141d', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  selected: { borderColor: '#ffe36d', backgroundColor: '#302d25' },
+  label: { color: '#abb2c4', fontSize: 13, fontWeight: '700' },
+  selectedLabel: { color: '#ffe36d' },
+  hint: { color: '#949bae', fontSize: 12, lineHeight: 18, marginTop: 10 },
+  error: { color: '#f5a8ac', fontSize: 12, lineHeight: 18, marginTop: 8 },
+  sectionTitle: { color: '#f7f8fc', fontSize: 16, fontWeight: '800', marginTop: 24, marginBottom: 16 },
+});
 
 const mobile = StyleSheet.create({
   scroll: { flex: 1 }, content: { padding: 16, paddingTop: 12, paddingBottom: 28, flexGrow: 1 },

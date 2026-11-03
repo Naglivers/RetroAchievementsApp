@@ -1,14 +1,14 @@
 import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { getAppLanguage, getTranslation } from '../src/i18n';
+import { useI18n } from '../src/i18n';
 import { getRecentGameAwards, getUserProfile, RecentAward } from '../src/retroachievements';
 
 type Props = { apiKey: string; onOpenSettings: () => void };
 
 export function CommunityFeed({ apiKey, onOpenSettings }: Props) {
   const compact = useWindowDimensions().width < 700;
-  const t = getTranslation(getAppLanguage());
+  const { t } = useI18n();
   const [awards, setAwards] = useState<RecentAward[]>([]);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -34,11 +34,11 @@ export function CommunityFeed({ apiKey, onOpenSettings }: Props) {
           <Text style={styles.title}>{t.communityTitle}</Text>
           <Text style={[styles.subtitle, compact && mobile.subtitle]}>{t.communityDescription}</Text>
         </View>
-        {apiKey ? <Pressable accessibilityRole="button" accessibilityLabel={`Atualizar ${t.communityTitle}`} onPress={refresh} style={[styles.refresh, compact && mobile.refresh]}><Feather name="refresh-cw" size={18} color="#a993ff" /></Pressable> : null}
+        {apiKey ? <Pressable accessibilityRole="button" accessibilityLabel={t.feedRefreshCommunity} onPress={refresh} style={[styles.refresh, compact && mobile.refresh]}><Feather name="refresh-cw" size={18} color="#a993ff" /></Pressable> : null}
       </View>
       {!apiKey ? <Pressable accessibilityRole="button" onPress={onOpenSettings} style={styles.connect}><Text style={[styles.connectText, styles.flexCopy]}>{t.communityConnect}</Text><Feather name="chevron-right" size={18} color="#ffe36d" /></Pressable> : null}
-      {apiKey && loading && awards.length === 0 ? <View style={styles.loader}><ActivityIndicator color="#a993ff" /><Text style={[styles.statusText, compact && mobile.statusText]}>Buscando atividade da comunidade…</Text></View> : null}
-      {apiKey && !loading && awards.length === 0 ? <View style={styles.empty}><Text style={[styles.statusText, compact && mobile.statusText]}>{failed ? 'Não foi possível carregar a comunidade. Tentando novamente em instantes…' : 'Ainda não há atividade para mostrar.'}</Text><Pressable accessibilityRole="button" onPress={refresh} style={[styles.retry, compact && mobile.retry]}><Feather name="refresh-cw" size={15} color="#171923" /><Text style={[styles.retryText, compact && mobile.retryText]}>Tentar agora</Text></Pressable></View> : null}
+      {apiKey && loading && awards.length === 0 ? <View style={styles.loader}><ActivityIndicator color="#a993ff" /><Text style={[styles.statusText, compact && mobile.statusText]}>{t.feedCommunityLoading}</Text></View> : null}
+      {apiKey && !loading && awards.length === 0 ? <View style={styles.empty}><Text style={[styles.statusText, compact && mobile.statusText]}>{failed ? t.feedCommunityError : t.feedCommunityEmpty}</Text><Pressable accessibilityRole="button" onPress={refresh} style={[styles.retry, compact && mobile.retry]}><Feather name="refresh-cw" size={15} color="#171923" /><Text style={[styles.retryText, compact && mobile.retryText]}>{t.feedTryNow}</Text></Pressable></View> : null}
       {apiKey && !loading ? awards.slice(0, 5).map((award, index) => (
         <View key={award.user + '-' + award.gameId + '-' + index} style={[styles.item, compact && mobile.item, compact && index === Math.min(awards.length, 5) - 1 && mobile.lastItem]}>
           {avatars[award.user] ? <Image source={{ uri: avatars[award.user].startsWith('http') ? avatars[award.user] : `https://media.retroachievements.org${avatars[award.user]}` }} style={[styles.avatar, compact && mobile.avatar]} /> : <View style={[styles.avatarFallback, compact && mobile.avatar]}><Text style={[styles.avatarInitial, compact && mobile.avatarInitial]}>{award.user.slice(0, 1).toUpperCase()}</Text></View>}

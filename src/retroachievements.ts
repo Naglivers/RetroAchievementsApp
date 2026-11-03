@@ -1,3 +1,5 @@
+import { cachedJson } from './cache';
+
 export type RecentAward = {
   user: string;
   awardKind: string;
@@ -109,6 +111,7 @@ export async function getRecentGameAwards(apiKey: string): Promise<RecentAward[]
     c: '25',
     k: 'beaten-softcore,beaten-hardcore,completed,mastered',
   });
+  return cachedJson(`recent-awards:${apiKey.slice(-8)}`, async () => {
   const response = await fetch(`https://retroachievements.org/API/API_GetRecentGameAwards.php?${params}`);
   if (!response.ok) throw new Error(`RetroAchievements respondeu com ${response.status}`);
 
@@ -123,6 +126,7 @@ export async function getRecentGameAwards(apiKey: string): Promise<RecentAward[]
     consoleName: String(award.ConsoleName ?? award.consoleName ?? ''),
     gameIcon: String(award.ImageIcon ?? award.GameIcon ?? award.gameIcon ?? ''),
   }));
+  }, 2 * 60 * 1000);
 }
 
 export async function getUserProfile(apiKey: string, username: string): Promise<UserProfile> {
@@ -372,3 +376,4 @@ export async function getGameLeaderboards(apiKey: string, gameId: number): Promi
   const data = await response.json() as { Results?: Array<Record<string, unknown>>; results?: Array<Record<string, unknown>> };
   return (data.Results ?? data.results ?? []).map((item) => { const top = (item.TopEntry ?? item.topEntry ?? {}) as Record<string, unknown>; return { id: Number(item.ID ?? item.id ?? 0), title: String(item.Title ?? item.title ?? ''), description: String(item.Description ?? item.description ?? ''), formattedScore: String(top.FormattedScore ?? top.formattedScore ?? top.Score ?? top.score ?? ''), user: String(top.User ?? top.user ?? '') }; }).filter((item) => item.id > 0);
 }
+

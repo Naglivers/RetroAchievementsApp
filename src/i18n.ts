@@ -1,4 +1,10 @@
-import { getLocales } from 'expo-localization';
+import { getLocales, useLocales } from 'expo-localization';
+import * as SecureStore from 'expo-secure-store';
+import { createContext, createElement, ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import { dashboardTranslations } from './locales/dashboard';
+import { exploreTranslations } from './locales/explore';
+import { gameTranslations } from './locales/game';
 
 const translations = {
   pt: {
@@ -7,6 +13,12 @@ const translations = {
     overview: 'Visão geral',
     navigation: 'NAVEGAÇÃO',
     settings: 'Configurações',
+    preferencesDescription: 'Escolha o idioma do app e conecte sua conta.',
+    language: 'Idioma',
+    languageAutomatic: 'Automático (sistema)',
+    languageHint: 'No modo automático, o app acompanha o idioma do sistema. As conquistas e os dados do RetroAchievements mantêm o idioma original.',
+    languageSaveError: 'Não foi possível salvar o idioma. A escolha será mantida até fechar o app. Toque no idioma para tentar novamente.',
+    usernamePlaceholder: 'Seu usuário do RetroAchievements',
     search: 'Buscar jogos, jogadores, conquistas',
     greeting: 'BOA NOITE, NAGLI',
     headline: 'Pronto para mais uma conquista?',
@@ -42,6 +54,12 @@ const translations = {
     overview: 'Overview',
     navigation: 'NAVIGATION',
     settings: 'Settings',
+    preferencesDescription: 'Choose the app language and connect your account.',
+    language: 'Language',
+    languageAutomatic: 'Automatic (system)',
+    languageHint: 'Automatic mode follows your system language. Achievements and RetroAchievements data stay in their original language.',
+    languageSaveError: 'Could not save the language. Your choice will last until you close the app. Select the language to try again.',
+    usernamePlaceholder: 'Your RetroAchievements username',
     search: 'Search games, players, achievements',
     greeting: 'GOOD EVENING, NAGLI',
     headline: 'Ready for another achievement?',
@@ -77,6 +95,12 @@ const translations = {
     overview: 'Resumen',
     navigation: 'NAVEGACIÓN',
     settings: 'Ajustes',
+    preferencesDescription: 'Elige el idioma de la app y conecta tu cuenta.',
+    language: 'Idioma',
+    languageAutomatic: 'Automático (sistema)',
+    languageHint: 'El modo automático sigue el idioma del sistema. Los logros y los datos de RetroAchievements conservan su idioma original.',
+    languageSaveError: 'No se pudo guardar el idioma. Tu elección se mantendrá hasta cerrar la app. Selecciona el idioma para volver a intentarlo.',
+    usernamePlaceholder: 'Tu usuario de RetroAchievements',
     search: 'Buscar juegos, jugadores, logros',
     greeting: 'BUENAS NOCHES, NAGLI',
     headline: '¿Listo para otro logro?',
@@ -108,13 +132,108 @@ const translations = {
   },
 } as const;
 
-type SupportedLanguage = keyof typeof translations;
+export type SupportedLanguage = keyof typeof translations;
+export type LanguagePreference = SupportedLanguage | 'system';
+
+export const supportedLanguages = [
+  { code: 'pt', label: 'Português' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+] as const;
+
+const LANGUAGE_KEY = 'checkpoint.language';
+
+function isSupportedLanguage(value: unknown): value is SupportedLanguage {
+  return value === 'pt' || value === 'en' || value === 'es';
+}
+
+function isLanguagePreference(value: unknown): value is LanguagePreference {
+  return value === 'system' || isSupportedLanguage(value);
+}
+
+function getLanguagePreference(): LanguagePreference {
+  try {
+    if (Platform.OS === 'web') {
+      const saved = globalThis.localStorage?.getItem(LANGUAGE_KEY);
+      if (isLanguagePreference(saved)) return saved;
+    }
+  } catch { /* Use the device language if browser storage is unavailable. */ }
+  return 'system';
+}
+
+function resolveSystemLanguage(locales: readonly { languageCode: string | null }[]): SupportedLanguage {
+  for (const locale of locales) {
+    const language = locale.languageCode?.toLowerCase().split(/[-_]/)[0];
+    if (isSupportedLanguage(language)) return language;
+  }
+  return 'pt';
+}
 
 export function getAppLanguage(): SupportedLanguage {
-  const language = getLocales()[0]?.languageCode?.toLowerCase();
-  return language === 'en' || language === 'es' || language === 'pt' ? language : 'pt';
+  const preference = getLanguagePreference();
+  if (preference !== 'system') return preference;
+  try {
+    return resolveSystemLanguage(getLocales());
+  } catch { return 'pt'; }
 }
 
 export function getTranslation(language = getAppLanguage()) {
-  return translations[language];
+  return { ...translations[language], ...dashboardTranslations[language], ...exploreTranslations[language], ...gameTranslations[language] };
+}
+
+type LanguageContextValue = {
+  language: SupportedLanguage;
+  languagePreference: LanguagePreference;
+  setLanguage: (language: LanguagePreference) => void;
+  languageSaveError: boolean;
+};
+
+const LanguageContext = createContext<LanguageContextValue | null>(null);
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const locales = useLocales();
+  const [languagePreference, updatePreference] = useState<LanguagePreference>(getLanguagePreference);
+  const language = languagePreference === 'system' ? resolveSystemLanguage(locales) : languagePreference;
+  const [languageSaveError, setLanguageSaveError] = useState(false);
+  const revision = useRef(0);
+  const writes = useRef(Promise.resolve());
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let active = true;
+    SecureStore.getItemAsync(LANGUAGE_KEY).then((saved) => {
+      if (active && revision.current === 0 && isLanguagePreference(saved)) updatePreference(saved);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') document.documentElement.lang = language;
+  }, [language]);
+
+  function setLanguage(next: LanguagePreference) {
+    if (!isLanguagePreference(next)) return;
+    const currentRevision = ++revision.current;
+    updatePreference(next);
+    setLanguageSaveError(false);
+    // Keep rapid changes in order so the last selection also wins on restart.
+    writes.current = writes.current.then(async () => {
+      if (Platform.OS === 'web') {
+        if (!globalThis.localStorage) throw new Error('Storage unavailable');
+        globalThis.localStorage.setItem(LANGUAGE_KEY, next);
+      } else {
+        await SecureStore.setItemAsync(LANGUAGE_KEY, next);
+      }
+    }).catch(() => {
+      if (revision.current === currentRevision) setLanguageSaveError(true);
+    });
+  }
+
+  return createElement(LanguageContext.Provider, { value: { language, languagePreference, setLanguage, languageSaveError } }, children);
+}
+
+export function useI18n() {
+  const context = useContext(LanguageContext);
+  if (!context) throw new Error('useI18n must be used within I18nProvider');
+  return { ...context, t: getTranslation(context.language) };
 }

@@ -4,12 +4,14 @@ import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, T
 import { GameComment, GameDetails, GameSubset, getGameComments, getGameDetails, getGameSubsets, UserGameProgress } from '../src/retroachievements';
 import { AchievementOrder, AchievementSetPanel } from './AchievementSetPanel';
 import { GameSidebar } from './GameSidebar';
+import { useI18n } from '../src/i18n';
 
 const media = (path: string) => path.startsWith('http') ? path : `https://media.retroachievements.org${path.startsWith('/') ? path : `/Badge/${path}.png`}`;
-const dateText = (value: string) => value ? new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) : '';
 type Props = { game: UserGameProgress; apiKey: string; username: string; onBack: () => void };
 
 export function GameDetail({ game, apiKey, username, onBack }: Props) {
+  const { t, language } = useI18n();
+  const dateText = (value: string) => value ? new Intl.DateTimeFormat(language, { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value)) : '';
   const { width } = useWindowDimensions();
   const desktop = width >= 1050;
   const compact = width < 700;
@@ -52,26 +54,26 @@ export function GameDetail({ game, apiKey, username, onBack }: Props) {
     !(hideEarned && item.dateEarned) && !(hideNonMissable && !missable(item.type)),
   ).sort((a, b) => order === 'earned' ? Number(Boolean(b.dateEarned)) - Number(Boolean(a.dateEarned)) : order === 'locked' ? Number(Boolean(a.dateEarned)) - Number(Boolean(b.dateEarned)) : order === 'points' ? b.points - a.points : order === 'difficulty' ? b.trueRatio - a.trueRatio : order === 'name' ? a.title.localeCompare(b.title) : a.id - b.id), [details, hideEarned, hideNonMissable, order]);
 
-  if (loading) return <View style={styles.state}><ActivityIndicator color="#ffe36d" /><Text style={styles.muted}>Carregando página do jogo…</Text></View>;
-  if (failed || !details) return <View style={styles.state}><Text style={styles.muted}>Não foi possível carregar este jogo.</Text><Pressable onPress={load} style={styles.retry}><Text style={styles.retryText}>Tentar novamente</Text></Pressable></View>;
+  if (loading) return <View style={styles.state}><ActivityIndicator color="#ffe36d" /><Text style={styles.muted}>{t.detailLoading}</Text></View>;
+  if (failed || !details) return <View style={styles.state}><Text style={styles.muted}>{t.detailError}</Text><Pressable onPress={load} style={styles.retry}><Text style={styles.retryText}>{t.retry}</Text></Pressable></View>;
 
   const completed = details.numAchievements ? Math.round((details.numAwardedToUser / details.numAchievements) * 100) : 0;
   const playtime = `${Math.floor(details.userTotalPlaytime / 3600)}h ${Math.floor((details.userTotalPlaytime % 3600) / 60)}min`;
   const open = (url: string) => Linking.openURL(url);
   const gameInformation = <View style={[rail.sidebar, desktop ? phone.desktopSidebar : phone.sidebar]}>
     <Image resizeMode="contain" source={{ uri: details.imageBoxArt ? media(details.imageBoxArt) : media(game.imageIcon) }} style={[rail.art, !desktop && phone.art]} />
-    <View style={[rail.warning, phone.warning]}><Feather name="eye" size={15} color="#aeb5c7" /><Text style={[rail.warningText, !desktop && phone.warningText]}>Alerta de Epilepsia Fotossensível</Text></View>
-    <View style={[rail.facts, !desktop && phone.facts]}>{[['Desenvolvedor', details.developer], ['Jogo base', game.title], ['Gênero', details.genre], ['Lançamento', details.released], ['Plataforma', details.consoleName], ['Progresso', details.userCompletion], ['Tempo de jogo', playtime], ['Jogadores', details.numDistinctPlayers.toLocaleString()]].map(([label, value], index) => <View key={label} style={[rail.fact, index === 7 && rail.factLast, !desktop && phone.fact]}><Text style={[rail.factLabel, !desktop && phone.factLabel]}>{label}</Text><Text style={[rail.factValue, !desktop && phone.factValue]}>{value || 'Não informado'}</Text></View>)}</View>
-    <Text style={[rail.resourcesTitle, !desktop && phone.resourcesTitle]}>Recursos Essenciais</Text>
-    <Pressable accessibilityRole="link" onPress={() => open(`https://retroachievements.org/game/${game.gameId}/hashes`)} style={[rail.resource, !desktop && phone.resource]}><Feather name="file-text" size={16} color="#ffe36d" /><Text style={[rail.resourceText, !desktop && phone.resourceText]}>Hashes de Jogo Suportados</Text><Feather name="external-link" size={14} color="#929aaf" /></Pressable>
-    <Pressable accessibilityRole="link" onPress={() => open(`https://retroachievements.org/game/${game.gameId}`)} style={[rail.resource, !desktop && phone.resource]}><Feather name="message-square" size={16} color="#ffe36d" /><Text style={[rail.resourceText, !desktop && phone.resourceText]}>Tópico de Fórum do Set Base</Text><Feather name="external-link" size={14} color="#929aaf" /></Pressable>
-    <Text style={[rail.resourcesTitle, !desktop && phone.resourcesTitle]}>Extras</Text>
-    <Pressable accessibilityRole="link" onPress={() => open(`https://retroachievements.org/game/${game.gameId}`)} style={[rail.resource, !desktop && phone.resource]}><Feather name="search" size={16} color="#ffe36d" /><Text style={[rail.resourceText, !desktop && phone.resourceText]}>Encontrar Jogos Relacionados</Text><Feather name="external-link" size={14} color="#929aaf" /></Pressable>
+    <View style={[rail.warning, phone.warning]}><Feather name="eye" size={15} color="#aeb5c7" /><Text style={[rail.warningText, !desktop && phone.warningText]}>{t.detailPhotosensitivity}</Text></View>
+    <View style={[rail.facts, !desktop && phone.facts]}>{[[t.detailDeveloper, details.developer], [t.detailBaseGame, game.title], [t.detailGenre, details.genre], [t.detailReleased, details.released], [t.detailPlatform, details.consoleName], [t.detailProgress, details.userCompletion], [t.detailPlaytime, playtime], [t.detailPlayers, details.numDistinctPlayers.toLocaleString(language)]].map(([label, value], index) => <View key={label} style={[rail.fact, index === 7 && rail.factLast, !desktop && phone.fact]}><Text style={[rail.factLabel, !desktop && phone.factLabel]}>{label}</Text><Text style={[rail.factValue, !desktop && phone.factValue]}>{value || t.detailNotProvided}</Text></View>)}</View>
+    <Text style={[rail.resourcesTitle, !desktop && phone.resourcesTitle]}>{t.detailResources}</Text>
+    <Pressable accessibilityRole="link" onPress={() => open(`https://retroachievements.org/game/${game.gameId}/hashes`)} style={[rail.resource, !desktop && phone.resource]}><Feather name="file-text" size={16} color="#ffe36d" /><Text style={[rail.resourceText, !desktop && phone.resourceText]}>{t.detailHashes}</Text><Feather name="external-link" size={14} color="#929aaf" /></Pressable>
+    <Pressable accessibilityRole="link" onPress={() => open(`https://retroachievements.org/game/${game.gameId}`)} style={[rail.resource, !desktop && phone.resource]}><Feather name="message-square" size={16} color="#ffe36d" /><Text style={[rail.resourceText, !desktop && phone.resourceText]}>{t.detailForum}</Text><Feather name="external-link" size={14} color="#929aaf" /></Pressable>
+    <Text style={[rail.resourcesTitle, !desktop && phone.resourcesTitle]}>{t.detailExtras}</Text>
+    <Pressable accessibilityRole="link" onPress={() => open(`https://retroachievements.org/game/${game.gameId}`)} style={[rail.resource, !desktop && phone.resource]}><Feather name="search" size={16} color="#ffe36d" /><Text style={[rail.resourceText, !desktop && phone.resourceText]}>{t.detailRelated}</Text><Feather name="external-link" size={14} color="#929aaf" /></Pressable>
     <GameSidebar apiKey={apiKey} gameId={details.id} currentUser={{ username, unlockedAchievements: details.numAwardedToUser, totalAchievements: details.numAchievements }} />
   </View>;
 
   return <View style={styles.page}>
-    <Pressable accessibilityRole="button" onPress={onBack} style={[styles.back, !desktop && phone.back]}><Feather name="arrow-left" size={18} color="#ffe36d" /><Text style={styles.backText}>Voltar</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={onBack} style={[styles.back, !desktop && phone.back]}><Feather name="arrow-left" size={18} color="#ffe36d" /><Text style={styles.backText}>{t.detailBack}</Text></Pressable>
     <View style={[styles.layout, desktop && styles.layoutDesktop]}>
       <View style={[styles.main, !desktop && phone.main]}>
         <View style={[styles.hero, compact && phone.hero]}>
@@ -88,7 +90,7 @@ export function GameDetail({ game, apiKey, username, onBack }: Props) {
           </View>
         </View>
 
-        {!desktop && <View accessibilityRole="tablist" style={phone.tabs}>{([{ id: 'achievements', title: 'Conquistas', icon: 'award' }, { id: 'about', title: 'Sobre o jogo', icon: 'info' }] as const).map((tab) => <Pressable key={tab.id} accessibilityRole="tab" accessibilityState={{ selected: mobileTab === tab.id }} onPress={() => setMobileTab(tab.id)} style={[phone.tab, mobileTab === tab.id && phone.tabActive]}><Feather name={tab.icon} size={16} color={mobileTab === tab.id ? '#ffe36d' : '#9ca5bb'} /><Text style={[phone.tabText, mobileTab === tab.id && phone.tabTextActive]}>{tab.title}</Text></Pressable>)}</View>}
+        {!desktop && <View accessibilityRole="tablist" style={phone.tabs}>{([{ id: 'achievements', title: t.detailAchievements, icon: 'award' }, { id: 'about', title: t.detailAbout, icon: 'info' }] as const).map((tab) => <Pressable key={tab.id} accessibilityRole="tab" accessibilityState={{ selected: mobileTab === tab.id }} onPress={() => setMobileTab(tab.id)} style={[phone.tab, mobileTab === tab.id && phone.tabActive]}><Feather name={tab.icon} size={16} color={mobileTab === tab.id ? '#ffe36d' : '#9ca5bb'} /><Text style={[phone.tabText, mobileTab === tab.id && phone.tabTextActive]}>{tab.title}</Text></Pressable>)}</View>}
         {(desktop || mobileTab === 'achievements') && <><AchievementSetPanel
           baseGameId={baseSet.id}
           baseIcon={baseSet.icon}
@@ -105,14 +107,14 @@ export function GameDetail({ game, apiKey, username, onBack }: Props) {
           onToggleLocked={() => setHideEarned(!hideEarned)}
         />
 
-        <View style={[styles.stats, !desktop && phone.stats]}>{[[details.numDistinctPlayers.toLocaleString(), 'JOGADORES'], [playtime, 'SEU TEMPO'], [details.genre || '—', 'GÊNERO']].map(([value, label]) => <View key={label} style={phone.stat}><Text style={[styles.statValue, !desktop && phone.statValue]}>{value}</Text><Text style={[styles.statLabel, !desktop && phone.statLabel]}>{label}</Text></View>)}</View>
-        <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Conquistas</Text><Text style={styles.sectionCount}>{achievements.length} exibidas</Text></View>
-        {achievements.length === 0 && <View style={phone.empty}><Feather name="filter" size={22} color="#a993ff" /><Text style={phone.emptyText}>Nenhuma conquista com esses filtros.</Text></View>}
-        {achievements.map((achievement) => { const earned = Boolean(achievement.dateEarned); return <View key={achievement.id} style={[styles.achievement, !desktop && phone.achievement, earned && styles.achievementEarned]}><Image source={{ uri: media(achievement.badgeUrl) }} style={[styles.badge, compact && phone.badge, !earned && styles.badgeLocked]} /><View style={[styles.achievementCopy, phone.shrink]}><View style={[styles.achievementTop, compact && phone.achievementTop]}><Text style={[styles.achievementTitle, !desktop && phone.achievementTitle]}>{achievement.title}</Text><Text style={[styles.points, !desktop && phone.points]}>{achievement.points} pts</Text></View><Text style={[styles.description, !desktop && phone.description]}>{achievement.description}</Text><Text style={[styles.achievementMeta, !desktop && phone.meta]}>{earned ? `Desbloqueada ${dateText(achievement.dateEarned)}${achievement.dateEarnedHardcore ? ' · Hardcore' : ''}` : `${achievement.numAwarded.toLocaleString()} jogadores · ${achievement.trueRatio} RP`}{missable(achievement.type) ? ' · Perdível' : ''}</Text></View></View>; })}
-        <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Jogadores recentes</Text><Text style={styles.sectionCount}>sua sessão</Text></View>
-        <View style={styles.playerCard}><View style={styles.playerAvatar}><Text style={styles.playerInitial}>{username.slice(0, 1).toUpperCase()}</Text></View><View style={phone.shrink}><Text style={styles.playerName}>{username}</Text><Text style={[styles.playerMeta, !desktop && phone.meta]}>Seu progresso neste jogo · {details.userCompletion}</Text></View></View>
-        <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Comentários</Text><Text style={styles.sectionCount}>{comments.length}</Text></View>
-        {comments.length === 0 ? <Text style={styles.empty}>Ainda não há comentários recentes.</Text> : comments.map((comment, index) => <View key={`${comment.user}-${index}`} style={styles.comment}><View style={styles.commentAvatar}><Text style={styles.commentInitial}>{comment.user.slice(0, 1).toUpperCase()}</Text></View><View style={[styles.commentCopy, phone.shrink]}><Text style={styles.commentUser}>{comment.user}</Text><Text style={[styles.commentText, !desktop && phone.description]}>{comment.text}</Text><Text style={[styles.commentDate, !desktop && phone.meta]}>{dateText(comment.submitted)}</Text></View></View>)}</>}
+        <View style={[styles.stats, !desktop && phone.stats]}>{[[details.numDistinctPlayers.toLocaleString(language), t.detailPlayers.toUpperCase()], [playtime, t.detailYourTime], [details.genre || '—', t.detailGenre.toUpperCase()]].map(([value, label]) => <View key={label} style={phone.stat}><Text style={[styles.statValue, !desktop && phone.statValue]}>{value}</Text><Text style={[styles.statLabel, !desktop && phone.statLabel]}>{label}</Text></View>)}</View>
+        <View style={styles.sectionHead}><Text style={styles.sectionTitle}>{t.detailAchievements}</Text><Text style={styles.sectionCount}>{achievements.length} {t.detailShown}</Text></View>
+        {achievements.length === 0 && <View style={phone.empty}><Feather name="filter" size={22} color="#a993ff" /><Text style={phone.emptyText}>{t.detailNoAchievements}</Text></View>}
+        {achievements.map((achievement) => { const earned = Boolean(achievement.dateEarned); return <View key={achievement.id} style={[styles.achievement, !desktop && phone.achievement, earned && styles.achievementEarned]}><Image source={{ uri: media(achievement.badgeUrl) }} style={[styles.badge, compact && phone.badge, !earned && styles.badgeLocked]} /><View style={[styles.achievementCopy, phone.shrink]}><View style={[styles.achievementTop, compact && phone.achievementTop]}><Text style={[styles.achievementTitle, !desktop && phone.achievementTitle]}>{achievement.title}</Text><Text style={[styles.points, !desktop && phone.points]}>{achievement.points} pts</Text></View><Text style={[styles.description, !desktop && phone.description]}>{achievement.description}</Text><Text style={[styles.achievementMeta, !desktop && phone.meta]}>{earned ? `${t.detailUnlocked} ${dateText(achievement.dateEarned)}${achievement.dateEarnedHardcore ? ' · Hardcore' : ''}` : `${achievement.numAwarded.toLocaleString(language)} ${t.detailPlayers.toLowerCase()} · ${achievement.trueRatio} RP`}{missable(achievement.type) ? ` · ${t.detailMissable}` : ''}</Text></View></View>; })}
+        <View style={styles.sectionHead}><Text style={styles.sectionTitle}>{t.detailRecentPlayers}</Text><Text style={styles.sectionCount}>{t.detailYourSession}</Text></View>
+        <View style={styles.playerCard}><View style={styles.playerAvatar}><Text style={styles.playerInitial}>{username.slice(0, 1).toUpperCase()}</Text></View><View style={phone.shrink}><Text style={styles.playerName}>{username}</Text><Text style={[styles.playerMeta, !desktop && phone.meta]}>{t.detailYourProgress} · {details.userCompletion}</Text></View></View>
+        <View style={styles.sectionHead}><Text style={styles.sectionTitle}>{t.detailComments}</Text><Text style={styles.sectionCount}>{comments.length}</Text></View>
+        {comments.length === 0 ? <Text style={styles.empty}>{t.detailNoComments}</Text> : comments.map((comment, index) => <View key={`${comment.user}-${index}`} style={styles.comment}><View style={styles.commentAvatar}><Text style={styles.commentInitial}>{comment.user.slice(0, 1).toUpperCase()}</Text></View><View style={[styles.commentCopy, phone.shrink]}><Text style={styles.commentUser}>{comment.user}</Text><Text style={[styles.commentText, !desktop && phone.description]}>{comment.text}</Text><Text style={[styles.commentDate, !desktop && phone.meta]}>{dateText(comment.submitted)}</Text></View></View>)}</>}
         {!desktop && mobileTab === 'about' && gameInformation}
       </View>
       {desktop && gameInformation}

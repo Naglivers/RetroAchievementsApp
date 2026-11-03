@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useI18n } from '../src/i18n';
 import { GameDetails, GameSubset } from '../src/retroachievements';
 
 const media = (path: string) => path.startsWith('http') ? path : `https://media.retroachievements.org${path.startsWith('/') ? path : `/Badge/${path}.png`}`;
@@ -23,44 +24,45 @@ type Props = {
 };
 
 export function AchievementSetPanel({ baseGameId, baseIcon, details, subsets, activeSetId, onSelectSet, onConfigureSubsets, order, onChangeOrder, missableOnly, onToggleMissable, lockedOnly, onToggleLocked }: Props) {
+  const { t, language } = useI18n();
   const { width } = useWindowDimensions();
   const compact = width < 700;
   const styles = compact ? { ...basePanelStyles(), ...phone } : basePanelStyles();
-  const sets: SetItem[] = [{ id: baseGameId, name: 'Base Set', icon: baseIcon, kind: 'base' }, ...subsets.map((subset) => ({ id: subset.id, name: subset.title, icon: subset.imageIcon, kind: 'subset' as const }))];
+  const sets: SetItem[] = [{ id: baseGameId, name: t.achievementBaseSet, icon: baseIcon, kind: 'base' }, ...subsets.map((subset) => ({ id: subset.id, name: subset.title, icon: subset.imageIcon, kind: 'subset' as const }))];
   const authors = [...new Set(details.achievements.map((achievement) => achievement.author).filter(Boolean))];
   const totalPoints = details.achievements.reduce((sum, achievement) => sum + achievement.points, 0);
   const earned = details.achievements.filter((achievement) => Boolean(achievement.dateEarned));
   const earnedPoints = earned.reduce((sum, achievement) => sum + achievement.points, 0);
   const missable = details.achievements.filter((achievement) => achievement.type.toLowerCase() === 'missable').length;
   const percentage = details.numAchievements ? Math.round((details.numAwardedToUser / details.numAchievements) * 100) : 0;
-  const status = percentage === 100 ? 'Mastered' : percentage > 0 ? 'Em progresso' : 'Não iniciado';
-  const labels: Record<AchievementOrder, string> = { earned: 'Desbloqueado primeiro', locked: 'Bloqueado primeiro', default: 'Ordem padrão', points: 'Pontos', difficulty: 'Dificuldade', name: 'Nome' };
+  const status = percentage === 100 ? t.achievementMastered : percentage > 0 ? t.achievementInProgress : t.achievementNotStarted;
+  const labels: Record<AchievementOrder, string> = { earned: t.achievementEarnedFirst, locked: t.achievementLockedFirst, default: t.achievementDefaultOrder, points: t.achievementPoints, difficulty: t.achievementDifficulty, name: t.achievementName };
   const nextOrder: AchievementOrder = order === 'earned' ? 'locked' : order === 'locked' ? 'default' : 'earned';
 
   return <View style={styles.panel}>
     <View style={styles.tabBar}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-        {sets.map((set) => <Pressable key={set.id} accessibilityRole="tab" accessibilityState={{ selected: activeSetId === set.id }} onPress={() => onSelectSet(set.id)} accessibilityLabel={`Selecionar ${set.name}`} style={[styles.tab, activeSetId === set.id && styles.tabActive]}>
+        {sets.map((set) => <Pressable key={set.id} accessibilityRole="tab" accessibilityState={{ selected: activeSetId === set.id }} onPress={() => onSelectSet(set.id)} accessibilityLabel={t.achievementSelect.replace('{name}', set.name)} style={[styles.tab, activeSetId === set.id && styles.tabActive]}>
           <Image source={{ uri: media(set.icon) }} style={styles.tabIcon} accessibilityLabel={set.name} />
           {compact && <Text numberOfLines={1} style={[phone.tabName, activeSetId === set.id && phone.tabNameActive]}>{set.name}</Text>}
         </Pressable>)}
       </ScrollView>
-      <Pressable onPress={onConfigureSubsets} accessibilityLabel="Configurar subsets" style={styles.configure}><Feather name="sliders" size={16} color="#d9b900" /></Pressable>
+      <Pressable onPress={onConfigureSubsets} accessibilityLabel={t.achievementConfigure} style={styles.configure}><Feather name="sliders" size={16} color="#d9b900" /></Pressable>
     </View>
     <View style={styles.information}>
       <View style={styles.infoLeft}>
-        <Text style={styles.kind}>{activeSetId === baseGameId ? 'Base Set' : 'Subset'}</Text>
+        <Text style={styles.kind}>{activeSetId === baseGameId ? t.achievementBaseSet : t.achievementSubset}</Text>
         {activeSetId !== baseGameId && <Text style={styles.setName}>{details.title}</Text>}
-        <Text style={styles.valueLine}><Text style={styles.blue}>{details.numAchievements} conquistas</Text> valendo <Text style={styles.blue}>{totalPoints.toLocaleString()} pontos</Text> <Text style={styles.dim}>(— · ×—)</Text></Text>
-        <Text style={styles.progressLine}>Desbloqueadas <Text style={styles.blue}>{earned.length} conquistas</Text> valendo <Text style={styles.blue}>{earnedPoints.toLocaleString()} pontos</Text></Text>
+        <Text style={styles.valueLine}><Text style={styles.blue}>{details.numAchievements} {details.numAchievements === 1 ? t.achievementSingular : t.achievementPlural}</Text> {t.achievementWorth} <Text style={styles.blue}>{totalPoints.toLocaleString(language)} {t.achievementPoints}</Text> <Text style={styles.dim}>(— · ×—)</Text></Text>
+        <Text style={styles.progressLine}>{t.achievementUnlocked} <Text style={styles.blue}>{earned.length} {earned.length === 1 ? t.achievementSingular : t.achievementPlural}</Text> {t.achievementWorth} <Text style={styles.blue}>{earnedPoints.toLocaleString(language)} {t.achievementPoints}</Text></Text>
       </View>
       <View style={styles.status}><Feather name={percentage === 100 ? 'award' : 'target'} size={18} color="#ffe36d" /><Text style={styles.statusPercent}>{percentage}%</Text><Text style={styles.statusText}>{status}</Text></View>
     </View>
-    {authors.length > 0 && <View style={styles.people}><Feather name="award" size={14} color="#e1c500" /><Text style={styles.peopleTitle}>{authors.length} autor{authors.length === 1 ? '' : 'es'}</Text>{authors.slice(0, 4).map((author) => <View key={author} style={styles.author}><View style={styles.initial}><Text style={styles.initialText}>{author.slice(0, 1).toUpperCase()}</Text></View><Text style={styles.authorName}>{author}</Text></View>)}{authors.length > 4 && <Text style={styles.more}>+{authors.length - 4}</Text>}<View style={styles.contributors}><Feather name="users" size={14} color="#929292" /><Text style={styles.contributorText}>Contributors indisponíveis</Text></View></View>}
+    {authors.length > 0 && <View style={styles.people}><Feather name="award" size={14} color="#e1c500" /><Text style={styles.peopleTitle}>{authors.length} {authors.length === 1 ? t.achievementAuthor : t.achievementAuthors}</Text>{authors.slice(0, 4).map((author) => <View key={author} style={styles.author}><View style={styles.initial}><Text style={styles.initialText}>{author.slice(0, 1).toUpperCase()}</Text></View><Text style={styles.authorName}>{author}</Text></View>)}{authors.length > 4 && <Text style={styles.more}>+{authors.length - 4}</Text>}<View style={styles.contributors}><Feather name="users" size={14} color="#929292" /><Text style={styles.contributorText}>{t.achievementContributorsUnavailable}</Text></View></View>}
     <View style={styles.filters}>
-      <Pressable onPress={() => onChangeOrder(nextOrder)} accessibilityLabel="Alterar ordenação" style={styles.filter}><Feather name="arrow-up" size={14} color="#e1c500" /><Text style={styles.filterText}>{labels[order]}</Text></Pressable>
-      <Pressable onPress={onToggleMissable} accessibilityLabel="Apenas perdíveis" style={[styles.filter, missableOnly && styles.filterOn]}><Feather name="alert-circle" size={14} color={missableOnly ? '#171717' : '#e1c500'} /><Text style={[styles.filterText, missableOnly && styles.filterTextOn]}>Apenas Perdíveis</Text><Text style={[styles.count, missableOnly && styles.countOn]}>{missable}</Text></Pressable>
-      <Pressable onPress={onToggleLocked} accessibilityLabel="Apenas bloqueados" style={[styles.filter, lockedOnly && styles.filterOn]}><Feather name="eye-off" size={14} color={lockedOnly ? '#171717' : '#e1c500'} /><Text style={[styles.filterText, lockedOnly && styles.filterTextOn]}>Apenas Bloqueados</Text></Pressable>
+      <Pressable onPress={() => onChangeOrder(nextOrder)} accessibilityLabel={t.achievementChangeOrder} style={styles.filter}><Feather name="arrow-up" size={14} color="#e1c500" /><Text style={styles.filterText}>{labels[order]}</Text></Pressable>
+      <Pressable onPress={onToggleMissable} accessibilityLabel={t.achievementMissableOnly} style={[styles.filter, missableOnly && styles.filterOn]}><Feather name="alert-circle" size={14} color={missableOnly ? '#171717' : '#e1c500'} /><Text style={[styles.filterText, missableOnly && styles.filterTextOn]}>{t.achievementMissableOnly}</Text><Text style={[styles.count, missableOnly && styles.countOn]}>{missable}</Text></Pressable>
+      <Pressable onPress={onToggleLocked} accessibilityLabel={t.achievementLockedOnly} style={[styles.filter, lockedOnly && styles.filterOn]}><Feather name="eye-off" size={14} color={lockedOnly ? '#171717' : '#e1c500'} /><Text style={[styles.filterText, lockedOnly && styles.filterTextOn]}>{t.achievementLockedOnly}</Text></Pressable>
       <View style={styles.counters}><View style={styles.counter}><Feather name="layers" size={13} color="#aaa" /><Text style={styles.counterText}>0</Text></View><View style={styles.counter}><Feather name="award" size={13} color="#ddd" /><Text style={styles.counterText}>{details.numAchievements}</Text></View></View>
     </View>
   </View>;

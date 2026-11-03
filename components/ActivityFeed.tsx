@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { getAppLanguage, getTranslation } from '../src/i18n';
+import { useI18n } from '../src/i18n';
 import { getAllUserGameProgress, getUserGamePoints, getUserRecentAchievements, RecentAchievement, UserGameProgress } from '../src/retroachievements';
 
 type Props = { apiKey: string; username: string; onOpenSettings: () => void; onOpenGame: (game: UserGameProgress) => void };
@@ -9,29 +9,20 @@ const media = (path: string) => path.startsWith('http') ? path : `https://media.
 
 function relativeTime(date: string, locale: string) {
   const milliseconds = Date.now() - new Date(date).getTime();
+  if (!Number.isFinite(milliseconds)) return '—';
   const minutes = Math.max(0, Math.floor(milliseconds / 60000));
-  if (minutes < 60) return locale === 'pt' ? `${minutes} min atrás` : locale === 'es' ? `hace ${minutes} min` : `${minutes}m ago`;
+  const formatter = new Intl.RelativeTimeFormat(locale, { style: 'short' });
+  if (minutes < 60) return formatter.format(-minutes, 'minute');
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return locale === 'pt' ? `${hours} h atrás` : locale === 'es' ? `hace ${hours} h` : `${hours}h ago`;
+  if (hours < 24) return formatter.format(-hours, 'hour');
   const days = Math.floor(hours / 24);
-  return locale === 'pt' ? `${days} d atrás` : locale === 'es' ? `hace ${days} d` : `${days}d ago`;
-}
-
-function awardLabel(kind: string, language: string) {
-  const labels: Record<string, Record<string, string>> = {
-    mastered: { pt: 'Dominou', en: 'Mastered', es: 'Dominó' },
-    completed: { pt: 'Completou', en: 'Completed', es: 'Completó' },
-    'beaten-hardcore': { pt: 'Terminou em hardcore', en: 'Beat in hardcore', es: 'Terminó en hardcore' },
-    'beaten-softcore': { pt: 'Terminou', en: 'Beat', es: 'Terminó' },
-  };
-  return labels[kind]?.[language] ?? kind;
+  return formatter.format(-days, 'day');
 }
 
 export function ActivityFeed({ apiKey, username, onOpenSettings, onOpenGame }: Props) {
   const { width } = useWindowDimensions();
   const mobile = width < 900;
-  const language = getAppLanguage();
-  const t = getTranslation(language);
+  const { t, language } = useI18n();
   const [achievements, setAchievements] = useState<RecentAchievement[]>([]);
   const [games, setGames] = useState<UserGameProgress[]>([]);
   const [loading, setLoading] = useState(false);
@@ -88,13 +79,13 @@ export function ActivityFeed({ apiKey, username, onOpenSettings, onOpenGame }: P
           </View>
           <View style={[styles.folderCopy, mobile && small.folderCopy]}>
             <Text numberOfLines={mobile ? 2 : 1} style={[styles.folderTitle, mobile && small.folderTitle]}>{folder.title}</Text>
-            {mobile ? <><Text style={small.consoleName}>{folder.consoleName}</Text><Text style={small.folderMeta}>{folder.numAwarded}/{folder.maxPossible} conquistas · {folder.possibleScore} pts</Text></> : <Text style={styles.folderMeta}>{folder.consoleName} · {folder.numAwarded}/{folder.maxPossible} conquistas · {folder.possibleScore} pts</Text>}
+            {mobile ? <><Text style={small.consoleName}>{folder.consoleName}</Text><Text style={small.folderMeta}>{folder.numAwarded.toLocaleString(language)}/{folder.maxPossible.toLocaleString(language)} {t.feedAchievements} · {folder.possibleScore.toLocaleString(language)} pts</Text></> : <Text style={styles.folderMeta}>{folder.consoleName} · {folder.numAwarded.toLocaleString(language)}/{folder.maxPossible.toLocaleString(language)} {t.feedAchievements} · {folder.possibleScore.toLocaleString(language)} pts</Text>}
             <View style={[styles.progressRow, mobile && small.progressRow]}><View style={[styles.progressTrack, mobile && small.progressTrack]}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View><Text style={[styles.progressLabel, mobile && small.progressLabel]}>{progress}%</Text></View>
           </View>
           <Feather name={isOpen ? 'chevron-down' : 'chevron-right'} size={20} color="#aeb5c8" />
         </Pressable>
         {isOpen && <View style={[styles.folderContent, mobile && small.folderContent]}>
-          <Pressable accessibilityRole="button" onPress={() => onOpenGame(folder)} style={[styles.openGameButton, mobile && small.openGameButton]}><Feather name="external-link" size={16} color="#302907" /><Text style={[styles.openGameText, mobile && small.openGameText]}>Abrir página do jogo</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => onOpenGame(folder)} style={[styles.openGameButton, mobile && small.openGameButton]}><Feather name="external-link" size={16} color="#302907" /><Text style={[styles.openGameText, mobile && small.openGameText]}>{t.feedOpenGame}</Text></Pressable>
           {folder.items.length === 0 ? <Text style={[styles.meta, mobile && small.emptyFolderText]}>{t.noRecentActivity}</Text> : folder.items.map((achievement, index) => <View style={[styles.card, mobile && small.card]} key={`${achievement.title}-${achievement.date}-${index}`}>
             {achievement.badgeUrl ? <Image source={{ uri: media(achievement.badgeUrl) }} style={[styles.badgeImage, mobile && small.badgeImage]} /> : <View style={[styles.badge, mobile && small.badgeImage]}><Feather name={achievement.hardcore ? 'award' : 'check'} size={20} color="#ffe36d" /></View>}
             <View style={[styles.copy, mobile && small.copy]}><Text style={[styles.player, mobile && small.player]}>{achievement.title} <Text style={styles.award}>+{achievement.points}</Text></Text><Text numberOfLines={mobile ? 2 : 1} style={[styles.description, mobile && small.description]}>{achievement.description}</Text><Text style={[styles.meta, mobile && small.meta]}>{relativeTime(achievement.date, language)}{achievement.hardcore ? ' · Hardcore' : ''}</Text></View>

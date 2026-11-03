@@ -12,6 +12,7 @@ Um cliente **Expo / React Native** para transformar o RetroAchievements em uma e
 - Coleção de jogos e progresso de conquistas.
 - Indicador de atividade da comunidade em tempo real.
 - Navegação por Início, Explorar, Atividade e Perfil.
+- Interface em português, inglês ou espanhol. Por padrão, acompanha o idioma do sistema; em **Configurações → Idioma**, é possível escolher um idioma manualmente ou voltar ao modo **Automático (sistema)**. A troca é imediata e a preferência fica salva no dispositivo; conquistas e demais conteúdos da API mantêm o idioma original.
 
 Os dados na tela inicial são de demonstração enquanto a conexão de conta ainda não foi implementada.
 
@@ -28,7 +29,7 @@ O Checkpoint não emula jogos nem substitui o site oficial. Ele é um painel pes
 
 ## Tecnologias
 
-- [Expo](https://expo.dev/)
+- [Expo SDK 58](https://expo.dev/changelog/sdk-58)
 - React Native
 - Expo Router
 - TypeScript
@@ -39,7 +40,7 @@ Um único código atende **Android**, **iOS** e **web**.
 
 ### Pré-requisitos
 
-- Node.js 20 ou mais recente
+- Node.js 22.13+ ou 24.3+ (LTS)
 - npm
 - Para executar no celular: [Expo Go](https://expo.dev/go)
 
